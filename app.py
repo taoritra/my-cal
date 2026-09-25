@@ -45,14 +45,6 @@ st.markdown(
         }
     }
 
-    /* GRIGLIA CSS PURA A 2 COLONNE FISSE (Funziona anche su smartphone) */
-    .custom-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px;
-        margin-bottom: 10px;
-    }
-
     /* Card eventi con altezza fissa identica e flexbox interno */
     .event-card {
         border-radius: 10px;
@@ -204,17 +196,12 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE REALI CON CSS GRID ---
+# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE REALI ---
 def renderizza_griglia_card(df_eventi, chiave_prefisso):
-    # Palette colori pastello morbidi per lo sfondo delle card
     colori_pastello = [
         "#fdf2e9", "#e8f8f5", "#ebf5fb", "#f4ecf7", "#fef9e7", "#f2f4f4"
     ]
 
-    # Dividiamo gli eventi in coppie per distribuirli in modo alternato su 2 colonne usando tabelle/colonne Streamlit intelligenti, 
-    # oppure stampando direttamente la griglia HTML affiancata. 
-    # Per consentire le checkbox cliccabili native di Streamlit dentro una griglia a 2 colonne forzata, usiamo colonne a coppie:
-    
     for i in range(0, len(df_eventi), 2):
         col1, col2 = st.columns(2)
         coppia = [df_eventi.iloc[i], df_eventi.iloc[i+1]] if i+1 < len(df_eventi) else [df_eventi.iloc[i]]
@@ -314,7 +301,7 @@ if not df.empty:
             periodo = st.selectbox("Periodo:", ["Solo Futuri", "Tutti", "Solo Passati"])
 
         min_date = df["DataInizio"].min() if not pd.isna(df["DataInizio"].min()) else oggi
-        max_date = df["DataInizio"].max() if not pd.isna(df["DataIn'..."] else oggi
+        max_date = df["DataInizio"].max() if not pd.isna(df["DataInizio"].max()) else oggi
 
         intervallo_date = st.date_input("Intervallo:", value=(min_date, max_date))
 
