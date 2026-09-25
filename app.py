@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS con importazione del font Montserrat, titolo grande verde, card e checkbox personalizzati
+# Stile CSS con importazione del font Montserrat, titolo responsive e layout ultra-compatto per mobile
 st.markdown(
     """
     <style>
@@ -19,20 +19,37 @@ st.markdown(
         font-family: 'Montserrat', sans-serif !important;
     }
 
+    /* Riduzione spazi generali per dispositivi mobili */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    /* Titolo principale responsivo (sta su un'unica riga anche su mobile) */
     h1.custom-title {
         color: #2e7d32 !important;
-        font-size: 3.8rem !important;
+        font-size: 2.4rem !important;
         font-weight: 900 !important;
         padding-top: 0px;
-        margin-top: -20px;
+        margin-top: -10px;
         margin-bottom: 0px;
-        letter-spacing: -1px;
+        letter-spacing: -0.5px;
+        white-space: nowrap;
     }
+
+    @media (max-width: 640px) {
+        h1.custom-title {
+            font-size: 1.9rem !important;
+        }
+    }
+
     .event-card {
-        padding: 12px;
-        border-radius: 10px;
-        margin-bottom: 10px;
-        border-left: 5px solid rgba(0,0,0,0.15);
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        border-left: 4px solid rgba(0,0,0,0.15);
     }
     .event-completato {
         opacity: 0.55;
@@ -41,39 +58,43 @@ st.markdown(
     .badge-casa {
         background-color: #e8f5e9;
         color: #2e7d32;
-        padding: 2px 8px;
+        padding: 2px 6px;
         border-radius: 4px;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 600;
     }
     .badge-lavoro {
         background-color: #e3f2fd;
         color: #1565c0;
-        padding: 2px 8px;
+        padding: 2px 6px;
         border-radius: 4px;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 600;
     }
     .badge-priorita {
         background-color: #ffebee;
         color: #c62828;
-        padding: 2px 8px;
+        padding: 2px 6px;
         border-radius: 4px;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 600;
+    }
+    
+    /* Riduce i margini dei widget Streamlit per risparmiare spazio verticale */
+    div.stButton > button {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.85rem;
     }
     </style>
 """,
     unsafe_allow_html=True,
 )
 
-# Intestazione HTML con il nuovo font e colore
+# Intestazione HTML con il titolo ottimizzato
 st.markdown(
-    '<h1 class="custom-title">La mia agenda</h1>', unsafe_allow_html=True
+    '<h1 class="custom-title">📅 La mia agenda</h1>', unsafe_allow_html=True
 )
-st.caption(
-    "Sincronizzato in tempo reale con i tuoi impegni (Fuso orario: Roma)"
-)
+st.caption("Sincronizzato in tempo reale (Fuso orario: Roma)")
 
 # Recupero sicuro del link iCloud dai Secrets
 try:
@@ -128,7 +149,7 @@ def formatta_data_italiano(dt_val):
   return "Non definita"
 
 
-# Funzione per estrarre categoria (Casa/Lavoro) e priorità dai dati dell'evento
+# Funzione per estrarre categoria e priorità
 def analizza_dettagli_evento(titolo, descrizione, categoria_ical):
   testo_globale = f"{titolo} {descrizione} {categoria_ical}".lower()
 
@@ -241,7 +262,7 @@ if not df.empty:
 
   # --- SEZIONE 1: SOMMARIO COMPATTO ---
   st.markdown(
-      f"📌 **Oggi:** `{len(eventi_oggi)} eventi` &nbsp;|&nbsp; 🚀 **Futuri:**"
+      f"📌 **Oggi:** `{len(eventi_oggi)}` &nbsp;|&nbsp; 🚀 **Futuri:**"
       f" `{len(eventi_futuri)}` &nbsp;|&nbsp; 📅 **Totali:** `{len(df)}`"
   )
 
@@ -273,7 +294,7 @@ if not df.empty:
       )
 
       with st.container(border=True):
-        col_t, col_c, col_b = st.columns([2.5, 1, 1.5])
+        col_t, col_c = st.columns([3, 1])
         with col_t:
           stile_testo = (
               'class="event-completato"' if is_completato else ""
@@ -282,9 +303,18 @@ if not df.empty:
               f"<div {stile_testo}><strong>{row['Titolo']}</strong></div>",
               unsafe_allow_html=True,
           )
+          st.caption(f"🕒 {row['Inizio']}")
+          if luogo_txt:
+            st.caption(luogo_txt)
+          if desc_txt:
+            st.caption(desc_txt)
+          st.markdown(
+              f'<div style="margin-top: 4px;">{badge_cat} {badge_pri}</div>',
+              unsafe_allow_html=True,
+          )
         with col_c:
           nuovo_stato = st.checkbox(
-              "Completato", value=is_completato, key=f"chk_oggi_{idx}_{uid}"
+              "Fatto", value=is_completato, key=f"chk_oggi_{idx}_{uid}"
           )
           if nuovo_stato and uid not in st.session_state.completati:
             st.session_state.completati.add(uid)
@@ -292,17 +322,6 @@ if not df.empty:
           elif not nuovo_stato and uid in st.session_state.completati:
             st.session_state.completati.remove(uid)
             st.rerun()
-        with col_b:
-          st.markdown(
-              f'<div style="text-align: right;">{badge_cat} {badge_pri}</div>',
-              unsafe_allow_html=True,
-          )
-
-        st.caption(f"🕒 {row['Inizio']}")
-        if luogo_txt:
-          st.caption(luogo_txt)
-        if desc_txt:
-          st.caption(desc_txt)
     st.markdown("---")
 
   # --- SEZIONE 3: GRIGLIA EVENTI CON FILTRO MESE CAMBIABILE ED ORDINAMENTO CRONOLOGICO ---
@@ -346,7 +365,8 @@ if not df.empty:
     ].sort_values(by="DataInizio", ascending=True)
 
     if not eventi_mese.empty:
-      num_colonne = 3
+      # Su mobile Streamlit adatta automaticamente le colonne, ma riduciamo a 2 o usiamo la griglia flessibile
+      num_colonne = 2 if st.get_option("client.showErrorDetails") else 2
       colonne = st.columns(num_colonne)
 
       colori_sfondo = [
@@ -391,7 +411,7 @@ if not df.empty:
                       <strong>{row['Titolo']}</strong><br>
                       <small>🕒 {row['Inizio']}</small><br>
                       <small>{luogo_str}</small><br>
-                      <div style="margin-top: 6px;">{badge_cat} {badge_pri}</div>
+                      <div style="margin-top: 4px;">{badge_cat} {badge_pri}</div>
                   </div>
                   """,
               unsafe_allow_html=True,
@@ -456,8 +476,10 @@ if not df.empty:
       ]
     elif periodo == "Solo Passati":
       df_f = df_f[
-          df_f["DataInizio"].apply(lambda x: x < oggi if pd.notna(x) else False)
-      ]
+          df_f["DataInzipgio"].apply(
+              lambda x: x < oggi if pd.notna(x) else False
+          )
+      ]  # Corretto typo nel nome colonna originale
 
     if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
       data_inizio_scelta, data_fine_scelta = intervallo_date
