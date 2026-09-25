@@ -5,7 +5,7 @@ import requests
 import streamlit as st
 import zoneinfo
 
-# Configurazione della pagina (layout wide sfrutta al meglio la griglia)
+# Configurazione della pagina
 st.set_page_config(
     page_title="Dashboard Calendario iCloud", page_icon="📊", layout="wide"
 )
@@ -126,14 +126,11 @@ if not df.empty:
       df["DataInizio"].apply(lambda x: x >= oggi if pd.notna(x) else False)
   ]
 
-  # --- SEZIONE 1: KPI COMPATTI (Ottimizzati per mobile) ---
-  col_m1, col_m2, col_m3 = st.columns(3)
-  with col_m1:
-    st.metric("Totali", len(df))
-  with col_m2:
-    st.metric("Oggi", len(eventi_oggi))
-  with col_m3:
-    st.metric("Futuri", len(eventi_futuri))
+  # --- SEZIONE 1: SOMMARIO COMPATTO (Sostituisce le vecchie metriche ingombranti) ---
+  st.markdown(
+      f"📌 **Oggi:** `{len(eventi_oggi)} eventi` &nbsp;|&nbsp; 🚀 **Futuri:**"
+      f" `{len(eventi_futuri)}` &nbsp;|&nbsp; 📅 **Totali:** `{len(df)}`"
+  )
 
   st.markdown("---")
 
@@ -156,7 +153,6 @@ if not df.empty:
   # --- SEZIONE 3: GRIGLIA EVENTI DEL MESE IN CORSO ---
   st.subheader(f"📅 Appuntamenti del Mese ({oggi.strftime('%B %Y')})")
 
-  # Filtriamo gli eventi che appartengono allo stesso mese e anno odierni (e che sono futuri o di oggi)
   eventi_mese = eventi_futuri[
       eventi_futuri["DataInizio"].apply(
           lambda x: (
@@ -168,14 +164,12 @@ if not df.empty:
   ]
 
   if not eventi_mese.empty:
-    # Creiamo una griglia a 3 colonne per desktop che diventa a colonna singola automatica su mobile
     num_colonne = 3
     colonne = st.columns(num_colonne)
 
     for idx, (_, row) in enumerate(eventi_mese.iterrows()):
       col_corrente = colonne[idx % num_colonne]
       with col_corrente:
-        # Usiamo un contenitore con bordo per ogni "card" della griglia
         with st.container(border=True):
           st.markdown(f"**{row['Titolo']}**")
           st.caption(f"🕒 {row['Inizio']}")
