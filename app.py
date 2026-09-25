@@ -8,22 +8,27 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS per ingrandire il titolo "La mia agenda" in verde e stilizzare le card
+# Stile CSS per forzare un titolo grande, colorato di verde e stilizzare le card e il testo barrato
 st.markdown(
     """
     <style>
-    .custom-title {
-        color: #2e7d32;
-        font-size: 3rem; /* Titolo molto più grande e visibile */
-        font-weight: 800;
+    h1.custom-title {
+        color: #2e7d32 !important;
+        font-size: 3.5rem !important;
+        font-weight: 900 !important;
+        padding-top: 0px;
+        margin-top: -20px;
         margin-bottom: 0px;
-        line-height: 1.2;
     }
     .event-card {
         padding: 12px;
         border-radius: 10px;
         margin-bottom: 10px;
         border-left: 5px solid rgba(0,0,0,0.15);
+    }
+    .event-completato {
+        opacity: 0.55;
+        text-decoration: line-through;
     }
     .badge-casa {
         background-color: #e8f5e9;
@@ -54,9 +59,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Intestazione ingrandita e colorata di verde
+# Intestazione HTML esplicita molto grande e verde
 st.markdown(
-    '<p class="custom-title">La mia agenda</p>', unsafe_allow_html=True
+    '<h1 class="custom-title">La mia agenda</h1>', unsafe_allow_html=True
 )
 st.caption(
     "Sincronizzato in tempo reale con i tuoi impegni (Fuso orario: Roma)"
@@ -119,7 +124,6 @@ def formatta_data_italiano(dt_val):
 def analizza_dettagli_evento(titolo, descrizione, categoria_ical):
   testo_globale = f"{titolo} {descrizione} {categoria_ical}".lower()
 
-  # Rilevamento Casa / Lavoro
   if any(
       k in testo_globale
       for k in [
@@ -141,7 +145,6 @@ def analizza_dettagli_evento(titolo, descrizione, categoria_ical):
   else:
     categoria = "Generale"
 
-  # Rilevamento Priorità
   if any(k in testo_globale for k in ["priorità alta", "[alta]", "urgente", "!"]):
     priorita = "Alta"
   else:
@@ -187,8 +190,11 @@ def carica_eventi(url):
         categoria, priorita = analizza_dettagli_evento(
             titolo, descrizione, cat_str
         )
+        # ID univoco basato su titolo e data per tracciare lo stato di completamento
+        uid = f"{titolo}_{str(data_obj)}"
 
         eventi.append({
+            "UID": uid,
             "Titolo": titolo,
             "DataInizio": data_obj,
             "Inizio": data_str_ita,
@@ -200,7 +206,6 @@ def carica_eventi(url):
 
     df = pd.DataFrame(eventi)
     if not df.empty:
-      # Ordinamento cronologico generale
       df = df.sort_values(by="DataInizio", na_position="last").reset_index(
           drop=True
       )
@@ -216,6 +221,10 @@ with st.spinner("Sincronizzazione in corso..."):
 
 if not df.empty:
   oggi = get_oggi_italia()
+
+  # Inizializzazione dello stato in Session State per ricordare gli eventi spuntati come completati
+  if "completati" not in st.session_state:
+    st.session_state.completati = set()
 
   eventi_oggi = df[
       df["DataInizio"].apply(lambda x: x == oggi if pd.notna(x) else False)
@@ -236,6 +245,9 @@ if not df.empty:
   if not eventi_oggi.empty:
     st.subheader("🔔 Impegni di Oggi")
     for _, row in eventi_oggi.iterrows():
+      uid = row["UID"]
+      is_completato = uid in st.session_state.completati
+
       luogo_txt = f"📍 {row['Luogo']}" if row["Luogo"] else ""
       desc_txt = f"📝 {row['Descrizione']}" if row["Descrizione"] else ""
 
@@ -255,11 +267,31 @@ if not df.empty:
       )
 
       with st.container(border=True):
-        col_t, col_b = st.columns([3, 1])
+        col_t, col_c, col_b = st.columns([2.5, 1, 1.5])
         with col_t:
-          st.markdown(f"**{row['Titolo']}**")
+          stile_testo = (
+              'class="event-completato"' if is_completato else ""
+          )
+          st.markdown(
+              f"<div {stile_testo}><strong>{row['Titolo']}</strong></div>",
+              unsafe_allow_html=True,
+          )
+        with col_c:
+          # Checkbox per completare l'evento
+          nuovo_stato = st.checkbox(
+              "Completato", value=is_completato, key=f"chk_oggi_{uid}"
+          )
+          if nuovo_stato and uid not in st.session_state.completati:
+            st.session_state.completati.add(uid)
+            st.rerun()
+          elif not nuovo_stato and uid in st.session_state.completati:
+            st.session_state.completati.remove(uid)
+            st.rerun()
         with col_b:
-          st.markdown(f"{badge_cat} {badge_pri}", unsafe_allow_html=True)
+          st.markdown(
+              f'<div style="text-align: right;">{badge_cat} {badge_pri}</div>',
+              unsafe_allow_html=True,
+          )
 
         st.caption(f"🕒 {row['Inizio']}")
         if luogo_txt:
@@ -298,7 +330,6 @@ if not df.empty:
 
     anno_s, mese_s = map(int, mese_scelto.split("-"))
 
-    # Filtriamo e ordiniamo rigorosamente in ordine cronologico crescente
     eventi_mese = df[
         df["DataInizio"].apply(
             lambda x: (
@@ -314,17 +345,19 @@ if not df.empty:
       colonne = st.columns(num_colonne)
 
       colori_sfondo = [
-          "rgba(255, 223, 186, 0.35)",  # Arancio tenue
-          "rgba(186, 225, 255, 0.35)",  # Azzurro tenue
-          "rgba(218, 255, 186, 0.35)",  # Verde tenue
-          "rgba(255, 186, 203, 0.35)",  # Rosa tenue
-          "rgba(230, 218, 255, 0.35)",  # Viola tenue
-          "rgba(255, 255, 186, 0.35)",  # Giallo tenue
+          "rgba(255, 223, 186, 0.35)",
+          "rgba(186, 225, 255, 0.35)",
+          "rgba(218, 255, 186, 0.35)",
+          "rgba(255, 186, 203, 0.35)",
+          "rgba(230, 218, 255, 0.35)",
+          "rgba(255, 255, 186, 0.35)",
       ]
 
       for idx, (_, row) in enumerate(eventi_mese.iterrows()):
         col_corrente = colonne[idx % num_colonne]
         colore_corrente = colori_sfondo[idx % len(colori_sfondo)]
+        uid = row["UID"]
+        is_completato = uid in st.session_state.completati
 
         badge_cat = (
             '<span class="badge-lavoro">Lavoro</span>'
@@ -341,11 +374,13 @@ if not df.empty:
             else ""
         )
 
+        classe_card = "event-card event-completato" if is_completato else "event-card"
+
         with col_corrente:
           luogo_str = f"📍 {row['Luogo']}" if row["Luogo"] else ""
           st.markdown(
               f"""
-                  <div class="event-card" style="background-color: {colore_corrente};">
+                  <div class="{classe_card}" style="background-color: {colore_corrente};">
                       <strong>{row['Titolo']}</strong><br>
                       <small>🕒 {row['Inizio']}</small><br>
                       <small>{luogo_str}</small><br>
@@ -354,6 +389,17 @@ if not df.empty:
                   """,
               unsafe_allow_html=True,
           )
+
+          # Checkbox sotto ogni card per completare l'evento
+          nuovo_stato_card = st.checkbox(
+              "Fatto", value=is_completato, key=f"chk_mese_{uid}"
+          )
+          if nuovo_stato_card and uid not in st.session_state.completati:
+            st.session_state.completati.add(uid)
+            st.rerun()
+          elif not nuovo_stato_card and uid in st.session_state.completati:
+            st.session_state.completati.remove(uid)
+            st.rerun()
     else:
       st.info("Nessun evento in programma per il mese selezionato.")
   else:
@@ -417,16 +463,37 @@ if not df.empty:
           )
       ]
 
+    # Aggiungiamo una colonna visiva per lo stato completato nella tabella
+    df_f["Completato"] = df_f["UID"].apply(
+        lambda x: "✅ Sì" if x in st.session_state.completati else "❌ No"
+    )
+
     st.subheader(f"Risultati ({len(df_f)})")
     st.dataframe(
         df_f[
-            ["Titolo", "Inizio", "Categoria", "Priorità", "Luogo", "Descrizione"]
+            [
+                "Titolo",
+                "Inizio",
+                "Categoria",
+                "Priorità",
+                "Completato",
+                "Luogo",
+                "Descrizione",
+            ]
         ],
         use_container_width=True,
     )
 
     csv_data = df_f[
-        ["Titolo", "Inizio", "Categoria", "Priorità", "Luogo", "Descrizione"]
+        [
+            "Titolo",
+            "Inizio",
+            "Categoria",
+            "Priorità",
+            "Completato",
+            "Luogo",
+            "Descrizione",
+        ]
     ].to_csv(index=False)
     st.download_button(
         label="📥 Scarica CSV",
