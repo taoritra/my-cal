@@ -248,7 +248,7 @@ if not df.empty:
         col_filtro_m, _ = st.columns([2, 2])
         with col_filtro_m:
             mese_scelto = st.selectbox("Seleziona Mese:", mesi_disponibili, index=default_index,
-                                       format_func=lambda x: datetime.strptime(x, "%Y-%m-%d" if len(x)>7 else "%Y-%m", "%B %Y" if len(x)>7 else "%B %Y").strftime("%B %Y").capitalize() if len(x)==7 else x)
+                                       format_func=lambda x: datetime.strptime(x, "%Y-%m").strftime("%B %Y").capitalize())
 
         anno_s, mese_s = map(int, mese_scelto.split("-"))
         eventi_mese = df[df["DataInizio"].apply(lambda x: (x.year == anno_s and x.month == mese_s if pd.notna(x) else False))].sort_values(by="DataInizio", ascending=True)
