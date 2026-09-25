@@ -5,28 +5,59 @@ import requests
 import streamlit as st
 import zoneinfo
 
-# Configurazione della pagina (con icona calendario e titolo pulito)
-st.set_page_config(
-    page_title="Calendario Impegni", page_icon="📅", layout="wide"
-)
+# Configurazione della pagina (senza icona nel tab)
+icona_tab = ""  # Lasciato vuoto o pulito
+st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS personalizzato per le card colorate della griglia
+# Stile CSS per il titolo colorato di verde e le card colorate
 st.markdown(
     """
     <style>
+    .custom-title {
+        color: #2e7d32;
+        font-size: 2.25rem;
+        font-weight: 700;
+        margin-bottom: 0px;
+    }
     .event-card {
         padding: 12px;
         border-radius: 10px;
         margin-bottom: 10px;
         border-left: 5px solid rgba(0,0,0,0.15);
     }
+    .badge-casa {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    .badge-lavoro {
+        background-color: #e3f2fd;
+        color: #1565c0;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    .badge-priorita {
+        background-color: #ffebee;
+        color: #c62828;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
     </style>
 """,
     unsafe_allow_html=True,
 )
 
-# Intestazione con un'icona più elegante e moderna
-st.title("📅 Calendario Personale")
+# Intestazione personalizzata con font verde
+st.markdown(
+    '<p class="custom-title">La mia agenda</p>', unsafe_allow_html=True
+)
 st.caption(
     "Sincronizzato in tempo reale con i tuoi impegni (Fuso orario: Roma)"
 )
@@ -84,6 +115,27 @@ def formatta_data_italiano(dt_val):
   return "Non definita"
 
 
+# Funzione per estrarre categoria (Casa/Lavoro) e priorità dai dati dell'evento
+def analizza_dettagli_evento(titolo, descrizione, categoria_ical):
+  testo_globale = f"{titolo} {descrizione} {categoria_ical}".lower()
+
+  # Rilevamento Casa / Lavoro
+  if any(k in testo_globale for k in ["lavoro", "ufficio", "meeting", "call", "client", "riunione"]):
+    categoria = "Lavoro"
+  elif any(k in testo_globale for k in ["casa", "famiglia", "spesa", "medico", "commissione", "relax"]):
+    categoria = "Casa"
+  else:
+    categoria = "Generale"
+
+  # Rilevamento Priorità (es. se c'è [alta], [1], 'priorità', ecc.)
+  if any(k in testo_globale for k in ["priorità alta", "[alta]", "urgente", "!"]):
+    priorita = "Alta"
+  else:
+    priorita = "Normale"
+
+  return categoria, priorita
+
+
 @st.cache_data(ttl=600)
 def carica_eventi(url):
   try:
@@ -97,6 +149,14 @@ def carica_eventi(url):
         titolo = str(componente.get("summary", "Senza titolo"))
         luogo = str(componente.get("location", ""))
         descrizione = str(componente.get("description", ""))
+        
+        # Estrazione categorie native se presenti in iCloud
+        cat_raw = componente.get("categories", "")
+        if hasattr(cat_raw, "to_ical"):
+          cat_str = cat_raw.to_ical().decode("utf-8")
+        else:
+          cat_str = str(cat_raw)
+
         inizio = componente.get("dtstart")
 
         if inizio:
@@ -111,12 +171,17 @@ def carica_eventi(url):
           data_obj = None
           data_str_ita = "Data non definita"
 
+        # Analisi automatica di categoria e priorità
+        categoria, priorita = analizza_dettagli_evento(titolo, descrizione, cat_str)
+
         eventi.append({
             "Titolo": titolo,
             "DataInizio": data_obj,
             "Inizio": data_str_ita,
             "Luogo": luogo,
             "Descrizione": descrizione,
+            "Categoria": categoria,
+            "Priorità": priorita,
         })
 
     df = pd.DataFrame(eventi)
@@ -158,9 +223,17 @@ if not df.empty:
     for _, row in eventi_oggi.iterrows():
       luogo_txt = f"📍 {row['Luogo']}" if row["Luogo"] else ""
       desc_txt = f"📝 {row['Descrizione']}" if row["Descrizione"] else ""
+      
+      badge_cat = f'<span class="badge-lavoro">Lavoro</span>' if row["Categoria"] == "Lavoro" else (f'<span class="badge-casa">Casa</span>' if row["Categoria"] == "Casa" else "")
+      badge_pri = f'<span class="badge-priorita">⚠️ Priorità Alta</span>' if row["Priorità"] == "Alta" else ""
 
       with st.container(border=True):
-        st.markdown(f"**📌 {row['Titolo']}**")
+        col_t, col_b = st.columns([3, 1])
+        with col_t:
+          st.markdown(f"**{row['Titolo']}**")
+        with col_b:
+          st.markdown(f"{badge_cat} {badge_pri}", unsafe_allow_html=True)
+
         st.caption(f"🕒 {row['Inizio']}")
         if luogo_txt:
           st.caption(luogo_txt)
@@ -168,59 +241,88 @@ if not df.empty:
           st.caption(desc_txt)
     st.markdown("---")
 
-  # --- SEZIONE 3: GRIGLIA EVENTI DEL MESE IN CORSO ---
-  st.subheader(f"🗓️ Appuntamenti del Mese ({oggi.strftime('%B %Y')})")
+  # --- SEZIONE 3: GRIGLIA EVENTI CON FILTRO MESE CAMBIABILE ---
+  st.subheader("🗓️ Appuntamenti per Mese")
 
-  eventi_mese = eventi_futuri[
-      eventi_futuri["DataInizio"].apply(
-          lambda x: (
-              x.year == oggi.year and x.month == oggi.month
-              if pd.notna(x)
-              else False
-          )
+  # Creiamo una lista di mesi disponibili nel calendario per popolare il selettore
+  df_con_date = df.dropna(subset=["DataInizio"]).copy()
+  if not df_con_date.empty:
+    df_con_date["MeseAnno"] = df_con_date["DataInizio"].apply(lambda x: x.strftime("%Y-%m"))
+    mesi_disponibili = sorted(df_con_date["MeseAnno"].unique())
+    
+    # Mese corrente in formato stringa per impostarlo come default se presente
+    mese_corrente_str = oggi.strftime("%Y-%m")
+    default_index = mesi_disponibili.index(mese_corrente_str) if mese_corrente_str in mesi_disponibili else 0
+
+    col_filtro_m, _ = st.columns([2, 2])
+    with col_filtro_m:
+      mese_scelto = st.selectbox(
+          "Seleziona Mese:",
+          mesi_disponibili,
+          index=default_index,
+          format_func=lambda x: datetime.strptime(x, "%Y-%m").strftime("%B %Y").capitalize()
       )
-  ]
 
-  if not eventi_mese.empty:
-    num_colonne = 3
-    colonne = st.columns(num_colonne)
+    anno_s, mese_s = map(int, mese_scelto.split("-"))
 
-    colori_sfondo = [
-        "rgba(255, 223, 186, 0.35)",  # Arancio tenue
-        "rgba(186, 225, 255, 0.35)",  # Azzurro tenue
-        "rgba(218, 255, 186, 0.35)",  # Verde tenue
-        "rgba(255, 186, 203, 0.35)",  # Rosa tenue
-        "rgba(230, 218, 255, 0.35)",  # Viola tenue
-        "rgba(255, 255, 186, 0.35)",  # Giallo tenue
+    eventi_mese = df[
+        df["DataInizio"].apply(
+            lambda x: (
+                x.year == anno_s and x.month == mese_s
+                if pd.notna(x)
+                else False
+            )
+        )
     ]
 
-    for idx, (_, row) in enumerate(eventi_mese.iterrows()):
-      col_corrente = colonne[idx % num_colonne]
-      colore_corrente = colori_sfondo[idx % len(colori_sfondo)]
+    if not eventi_mese.empty:
+      num_colonne = 3
+      colonne = st.columns(num_colonne)
 
-      with col_corrente:
-        luogo_str = f"📍 {row['Luogo']}" if row["Luogo"] else ""
-        st.markdown(
-            f"""
-                <div class="event-card" style="background-color: {colore_corrente};">
-                    <strong>{row['Titolo']}</strong><br>
-                    <small>🕒 {row['Inizio']}</small><br>
-                    <small>{luogo_str}</small>
-                </div>
-                """,
-            unsafe_allow_html=True,
-        )
+      colori_sfondo = [
+          "rgba(255, 223, 186, 0.35)",  # Arancio tenue
+          "rgba(186, 225, 255, 0.35)",  # Azzurro tenue
+          "rgba(218, 255, 186, 0.35)",  # Verde tenue
+          "rgba(255, 186, 203, 0.35)",  # Rosa tenue
+          "rgba(230, 218, 255, 0.35)",  # Viola tenue
+          "rgba(255, 255, 186, 0.35)",  # Giallo tenue
+      ]
+
+      for idx, (_, row) in enumerate(eventi_mese.iterrows()):
+        col_corrente = colonne[idx % num_colonne]
+        colore_corrente = colori_sfondo[idx % len(colori_sfondo)]
+        
+        badge_cat = f'<span class="badge-lavoro">Lavoro</span>' if row["Categoria"] == "Lavoro" else (f'<span class="badge-casa">Casa</span>' if row["Categoria"] == "Casa" else "")
+        badge_pri = f'<span class="badge-priorita">⚠️ Alta</span>' if row["Priorità"] == "Alta" else ""
+
+        with col_corrente:
+          luogo_str = f"📍 {row['Luogo']}" if row["Luogo"] else ""
+          st.markdown(
+              f"""
+                  <div class="event-card" style="background-color: {colore_corrente};">
+                      <strong>{row['Titolo']}</strong><br>
+                      <small>🕒 {row['Inizio']}</small><br>
+                      <small>{luogo_str}</small><br>
+                      <div style="margin-top: 6px;">{badge_cat} {badge_pri}</div>
+                  </div>
+                  """,
+              unsafe_allow_html=True,
+          )
+    else:
+      st.info("Nessun evento in programma per il mese selezionato.")
   else:
-    st.info("Nessun altro evento in programma per questo mese.")
+    st.info("Nessuna data valida trovata nel calendario.")
 
   st.markdown("---")
 
   # --- SEZIONE 4: RICERCA E FILTRI AVANZATI ---
   with st.expander("🔍 Altri filtri e ricerca avanzata"):
-    c1, c2 = st.columns(2)
+    c1, c2, c3 = st.columns(3)
     with c1:
       ricerca = st.text_input("Cerca parola chiave:")
     with c2:
+      filtro_categoria = st.selectbox("Categoria:", ["Tutte", "Casa", "Lavoro", "Generale"])
+    with c3:
       periodo = st.selectbox(
           "Periodo:", ["Solo Futuri", "Tutti", "Solo Passati"]
       )
@@ -245,6 +347,9 @@ if not df.empty:
     if ricerca:
       df_f = df_f[df_f["Titolo"].str.contains(ricerca, case=False, na=False)]
 
+    if filtro_categoria != "Tutte":
+      df_f = df_f[df_f["Categoria"] == filtro_categoria]
+
     if periodo == "Solo Futuri":
       df_f = df_f[
           df_f["DataInizio"].apply(lambda x: x >= oggi if pd.notna(x) else False)
@@ -254,7 +359,7 @@ if not df.empty:
           df_f["DataInizio"].apply(lambda x: x < oggi if pd.notna(x) else False)
       ]
 
-    if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
+    if isinstance(intervallo_date, tuple) and len(intervallo_date == 2):
       data_inizio_scelta, data_fine_scelta = intervallo_date
       df_f = df_f[
           df_f["DataInizio"].apply(
@@ -266,12 +371,12 @@ if not df.empty:
 
     st.subheader(f"Risultati ({len(df_f)})")
     st.dataframe(
-        df_f[["Titolo", "Inizio", "Luogo", "Descrizione"]],
+        df_f[["Titolo", "Inizio", "Categoria", "Priorità", "Luogo", "Descrizione"]],
         use_container_width=True,
     )
 
     csv_data = df_f[
-        ["Titolo", "Inizio", "Luogo", "Descrizione"]
+        ["Titolo", "Inizio", "Categoria", "Priorità", "Luogo", "Descrizione"]
     ].to_csv(index=False)
     st.download_button(
         label="📥 Scarica CSV",
