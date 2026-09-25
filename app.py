@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS bilanciato (spaziatura pulita e ordinata, non appiccicata)
+# Stile CSS bilanciato e pulito
 st.markdown(
     """
     <style>
@@ -41,7 +41,7 @@ st.markdown(
         border-bottom-left-radius: 8px;
         border-bottom-right-radius: 8px;
         margin-top: -6px !important;
-        margin-bottom: 12px !important; /* Spazio equilibrato tra le card */
+        margin-bottom: 12px !important;
         border-left: 1px solid rgba(0,0,0,0.08);
         border-right: 1px solid rgba(0,0,0,0.08);
         border-bottom: 1px solid rgba(0,0,0,0.08);
@@ -151,7 +151,7 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- RENDERIZZAZIONE SINGOLA CARD ---
+# --- RENDERIZZAZIONE SINGOLA CARD CON DETTAGLI ---
 def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     uid = item["UID"]
     
@@ -164,6 +164,7 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
     badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; margin-left: 4px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
     luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
+    desc_str = item["Descrizione"].strip()
 
     # Parte superiore della card
     st.markdown(
@@ -172,7 +173,22 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
             <div style="font-size: 0.9rem; font-weight: 800; color: #2c3e50; line-height: 1.2; margin-bottom: 2px;">{item["Titolo"]}</div>
             <div style="font-size: 0.7rem; font-weight: 600; color: #444; margin-bottom: 2px;">🕒 {item["Inizio"]}</div>
             <div style="font-size: 0.65rem; color: #666; margin-bottom: 4px;">{luogo_str}</div>
-            <div>{badge_cat} {badge_pri}</div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Se l'evento ha una descrizione/dettagli su iCloud, li mostriamo in modo pulito
+    if desc_str:
+        st.markdown(
+            f"""
+            <div style="font-size: 0.7rem; color: #333; background: rgba(255,255,255,0.6); padding: 4px 6px; border-radius: 4px; margin-bottom: 6px; border-left: 2px solid #1b5e20; white-space: pre-wrap;">📝 {desc_str}</div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.markdown(
+        f"""
+            <div style="margin-top: 2px;">{badge_cat} {badge_pri}</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -232,7 +248,7 @@ if not df.empty:
         col_filtro_m, _ = st.columns([2, 2])
         with col_filtro_m:
             mese_scelto = st.selectbox("Seleziona Mese:", mesi_disponibili, index=default_index,
-                                       format_func=lambda x: datetime.strptime(x, "%Y-%m").strftime("%B %Y").capitalize())
+                                       format_func=lambda x: datetime.strptime(x, "%Y-%m-%d" if len(x)>7 else "%Y-%m", "%B %Y" if len(x)>7 else "%B %Y").strftime("%B %Y").capitalize() if len(x)==7 else x)
 
         anno_s, mese_s = map(int, mese_scelto.split("-"))
         eventi_mese = df[df["DataInizio"].apply(lambda x: (x.year == anno_s and x.month == mese_s if pd.notna(x) else False))].sort_values(by="DataInizio", ascending=True)
@@ -263,7 +279,7 @@ if not df.empty:
 
         df_f = df.copy()
         if ricerca:
-            df_f = df_f[df_f["Titolo"].str.contains(ricerca, case=False, na=False)]
+            df_f = df_f[df_f["Titolo"].str.contains(ricerca, case=False, na=False) | df_f["Descrizione"].str.contains(ricerca, case=False, na=False)]
         if filtro_categoria != "Tutte":
             df_f = df_f[df_f["Categoria"] == filtro_categoria]
         if periodo == "Solo Futuri":
@@ -276,7 +292,7 @@ if not df.empty:
 
         df_f["Completato"] = df_f["UID"].apply(lambda x: "✅" if x in st.session_state.completati else "❌")
         
-        st.dataframe(df_f[["Titolo", "Inizio", "Categoria", "Priorità", "Completato", "Luogo"]], use_container_width=True)
+        st.dataframe(df_f[["Titolo", "Inizio", "Categoria", "Priorità", "Descrizione", "Completato", "Luogo"]], use_container_width=True)
 
 else:
     st.warning("Nessun evento trovato o errore di connessione.")
