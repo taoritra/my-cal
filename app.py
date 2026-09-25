@@ -166,7 +166,7 @@ def renderizza_singola_card(item, idx, chiave_prefisso):
     # Container nativo con bordo e checkbox inclusa all'interno
     with st.container(border=True):
         st.markdown(
-            f'<div style="{stile_opacita">'
+            f'<div style="{stile_opacita}">'
             f'<div style="font-size: 1.05rem; font-weight: 800; color: #2c3e50; line-height: 1.3; margin-bottom: 6px;">{item["Titolo"]}</div>'
             f'<div style="font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 4px;">🕒 {item["Inizio"]}</div>'
             f'<div style="font-size: 0.8rem; color: #666; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{luogo_str}</div>'
