@@ -5,29 +5,31 @@ import requests
 import streamlit as st
 import zoneinfo
 
-# Configurazione della pagina
+# Configurazione della pagina (con icona calendario e titolo pulito)
 st.set_page_config(
-    page_title="Dashboard Calendario iCloud", page_icon="📊", layout="wide"
+    page_title="Calendario Impegni", page_icon="📅", layout="wide"
 )
 
-# Stile CSS personalizzato per dare sfumature colorate alle card della griglia
+# Stile CSS personalizzato per le card colorate della griglia
 st.markdown(
     """
     <style>
-    /* Stile per le card colorate della griglia */
     .event-card {
         padding: 12px;
         border-radius: 10px;
         margin-bottom: 10px;
-        border-left: 5px solid rgba(0,0,0,0.1);
+        border-left: 5px solid rgba(0,0,0,0.15);
     }
     </style>
 """,
     unsafe_allow_html=True,
 )
 
-st.title("📊 Dashboard Calendario")
-st.write("I tuoi impegni a portata di mano.")
+# Intestazione con un'icona più elegante e moderna
+st.title("📅 Calendario Personale")
+st.caption(
+    "Sincronizzato in tempo reale con i tuoi impegni (Fuso orario: Roma)"
+)
 
 # Recupero sicuro del link iCloud dai Secrets
 try:
@@ -129,7 +131,7 @@ def carica_eventi(url):
 
 
 # Caricamento dati con spinner
-with st.spinner("Sincronizzazione..."):
+with st.spinner("Sincronizzazione in corso..."):
   df = carica_eventi(URL_CALENDARIO)
 
 if not df.empty:
@@ -166,8 +168,8 @@ if not df.empty:
           st.caption(desc_txt)
     st.markdown("---")
 
-  # --- SEZIONE 3: GRIGLIA EVENTI DEL MESE IN CORSO (Con colori a rotazione) ---
-  st.subheader(f"📅 Appuntamenti del Mese ({oggi.strftime('%B %Y')})")
+  # --- SEZIONE 3: GRIGLIA EVENTI DEL MESE IN CORSO ---
+  st.subheader(f"🗓️ Appuntamenti del Mese ({oggi.strftime('%B %Y')})")
 
   eventi_mese = eventi_futuri[
       eventi_futuri["DataInizio"].apply(
@@ -183,14 +185,13 @@ if not df.empty:
     num_colonne = 3
     colonne = st.columns(num_colonne)
 
-    # Lista di colori pastello alternati per le card
     colori_sfondo = [
-        "rgba(255, 223, 186, 0.3)",  # Arancio tenue
-        "rgba(186, 225, 255, 0.3)",  # Azzurro tenue
-        "rgba(218, 255, 186, 0.3)",  # Verde tenue
-        "rgba(255, 186, 203, 0.3)",  # Rosa tenue
-        "rgba(230, 218, 255, 0.3)",  # Viola tenue
-        "rgba(255, 255, 186, 0.3)",  # Giallo tenue
+        "rgba(255, 223, 186, 0.35)",  # Arancio tenue
+        "rgba(186, 225, 255, 0.35)",  # Azzurro tenue
+        "rgba(218, 255, 186, 0.35)",  # Verde tenue
+        "rgba(255, 186, 203, 0.35)",  # Rosa tenue
+        "rgba(230, 218, 255, 0.35)",  # Viola tenue
+        "rgba(255, 255, 186, 0.35)",  # Giallo tenue
     ]
 
     for idx, (_, row) in enumerate(eventi_mese.iterrows()):
@@ -199,7 +200,6 @@ if not df.empty:
 
       with col_corrente:
         luogo_str = f"📍 {row['Luogo']}" if row["Luogo"] else ""
-        # Creiamo una card HTML personalizzata con il colore di sfondo ciclico
         st.markdown(
             f"""
                 <div class="event-card" style="background-color: {colore_corrente};">
@@ -251,7 +251,7 @@ if not df.empty:
       ]
     elif periodo == "Solo Passati":
       df_f = df_f[
-          df_f["DataInzIndex"].apply(lambda x: x < oggi if pd.notna(x) else False)
+          df_f["DataInizio"].apply(lambda x: x < oggi if pd.notna(x) else False)
       ]
 
     if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
