@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS pulito (senza forzature distruttive sulle colonne)
+# Stile CSS per forzare le 2 colonne affiancate e lo stile integrato delle card
 st.markdown(
     """
     <style>
@@ -25,7 +25,7 @@ st.markdown(
         padding-right: 1rem !important;
     }
 
-    /* Titolo principale ben visibile */
+    /* Titolo principale sempre visibile (senza icona) */
     h1.custom-title {
         color: #1b5e20 !important;
         font-size: 1.8rem !important;
@@ -35,9 +35,27 @@ st.markdown(
         letter-spacing: -0.5px;
     }
 
-    /* Testo etichetta checkbox all'interno della card */
+    /* FORZA 2 COLONNE REALI AFFIANCATE */
+    [data-testid="column"] {
+        width: 48% !important;
+        flex: 1 1 48% !important;
+        min-width: 250px !important;
+    }
+
+    /* Integrazione grafica della checkbox all'interno della card */
+    [data-testid="stCheckbox"] {
+        background-color: rgba(255, 255, 255, 0.6);
+        padding: 4px 10px;
+        border-radius: 0 0 10px 10px;
+        margin-top: -8px !important;
+        margin-bottom: 12px !important;
+        border-left: 1px solid rgba(0,0,0,0.08);
+        border-right: 1px solid rgba(0,0,0,0.08);
+        border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+    
     [data-testid="stCheckbox"] label {
-        font-size: 0.85rem !important;
+        font-size: 0.8rem !important;
         font-weight: 700 !important;
         color: #2c3e50 !important;
     }
@@ -46,8 +64,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Intestazione visibile
-st.markdown('<h1 class="custom-title">📅 La mia agenda</h1>', unsafe_allow_html=True)
+# Intestazione visibile (senza icona)
+st.markdown('<h1 class="custom-title">La mia agenda</h1>', unsafe_allow_html=True)
 st.caption("Sincronizzato in tempo reale (Fuso orario: Roma)")
 
 # Recupero link iCloud sicuro
@@ -140,7 +158,7 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- CARD UNICA CON CONTAINER NATIVO (COLORE + CHECKBOX DENTRO) ---
+# --- RENDERIZZAZIONE SINGOLA CARD COLORATA ---
 def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     uid = item["UID"]
     
@@ -154,25 +172,25 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 700; margin-left: 5px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
     luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
 
-    # Usiamo border=True e iniettiamo lo sfondo colorato direttamente nel container nativo
-    with st.container(border=True):
-        st.markdown(
-            f'<div style="background-color: {colore_sfondo}; padding: 8px; border-radius: 8px; {stile_opacita}">'
-            f'<div style="font-size: 1.05rem; font-weight: 800; color: #2c3e50; line-height: 1.3; margin-bottom: 6px;">{item["Titolo"]}</div>'
-            f'<div style="font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 4px;">🕒 {item["Inizio"]}</div>'
-            f'<div style="font-size: 0.8rem; color: #666; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{luogo_str}</div>'
-            f'<div>{badge_cat} {badge_pri}</div>'
-            f'</div>',
-            unsafe_allow_html=True
-        )
-        
-        nuovo_stato = st.checkbox("Completato", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{abs(hash(uid))}")
-        if nuovo_stato and uid not in st.session_state.completati:
-            st.session_state.completati.add(uid)
-            st.rerun()
-        elif not nuovo_stato and uid in st.session_state.completati:
-            st.session_state.completati.remove(uid)
-            st.rerun()
+    # Corpo principale della card colorata
+    card_html = (
+        f'<div style="background-color: {colore_sfondo}; border-top-left-radius: 12px; border-top-right-radius: 12px; padding: 12px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); box-shadow: 0 3px 6px rgba(0,0,0,0.03); {stile_opacita}">'
+        f'<div style="font-size: 1.05rem; font-weight: 800; color: #2c3e50; line-height: 1.3; margin-bottom: 6px;">{item["Titolo"]}</div>'
+        f'<div style="font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 4px;">🕒 {item["Inizio"]}</div>'
+        f'<div style="font-size: 0.8rem; color: #666; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{luogo_str}</div>'
+        f'<div>{badge_cat} {badge_pri}</div>'
+        f'</div>'
+    )
+    st.markdown(card_html, unsafe_allow_html=True)
+    
+    # Checkbox agganciata visivamente sotto la card con lo stesso sfondo
+    nuovo_stato = st.checkbox("Completato", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{abs(hash(uid))}")
+    if nuovo_stato and uid not in st.session_state.completati:
+        st.session_state.completati.add(uid)
+        st.rerun()
+    elif not nuovo_stato and uid in st.session_state.completati:
+        st.session_state.completati.remove(uid)
+        st.rerun()
 
 # --- GRIGLIA A 2 COLONNE PERFETTA ---
 def renderizza_griglia_card(df_eventi, chiave_prefisso):
