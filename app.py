@@ -3,15 +3,15 @@ from icalendar import Calendar
 import pandas as pd
 import requests
 import streamlit as st
-import zoneinfo  # Utile per gestire i fusi orari corretti
+import zoneinfo
 
-# Configurazione della pagina
+# Configurazione della pagina (layout wide sfrutta al meglio la griglia)
 st.set_page_config(
     page_title="Dashboard Calendario iCloud", page_icon="📊", layout="wide"
 )
 
-st.title("📊 Dashboard Calendario iCloud")
-st.write("Panoramica rapida e gestione intelligente dei tuoi impegni.")
+st.title("📊 Dashboard Calendario")
+st.write("I tuoi impegni a portata di mano.")
 
 # Recupero sicuro del link iCloud dai Secrets
 try:
@@ -24,7 +24,7 @@ except Exception:
   st.stop()
 
 
-# Funzione per ottenere la data odierna esatta in Italia (Fuso orario di Roma)
+# Funzione per ottenere la data odierna esatta in Italia
 def get_oggi_italia():
   try:
     roma_tz = zoneinfo.ZoneInfo("Europe/Rome")
@@ -43,29 +43,21 @@ def formatta_data_italiano(dt_val):
     ora_str = ""
 
   if isinstance(d, date):
-    giorni = [
-        "Lunedì",
-        "Martedì",
-        "Mercoledì",
-        "Giovedì",
-        "Venerdì",
-        "Sabato",
-        "Domenica",
-    ]
+    giorni = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
     mesi = [
         "",
-        "gennaio",
-        "febbraio",
-        "marzo",
-        "aprile",
-        "maggio",
-        "giugno",
-        "luglio",
-        "agosto",
-        "settembre",
-        "ottobre",
-        "novembre",
-        "dicembre",
+        "gen",
+        "feb",
+        "mar",
+        "apr",
+        "mag",
+        "giu",
+        "lug",
+        "ago",
+        "set",
+        "ott",
+        "nov",
+        "dic",
     ]
     nome_giorno = giorni[d.weekday()]
     nome_mese = mesi[d.month]
@@ -121,13 +113,12 @@ def carica_eventi(url):
 
 
 # Caricamento dati con spinner
-with st.spinner("Sincronizzazione della dashboard in corso..."):
+with st.spinner("Sincronizzazione..."):
   df = carica_eventi(URL_CALENDARIO)
 
 if not df.empty:
   oggi = get_oggi_italia()
 
-  # Filtri basati sulla data italiana corretta
   eventi_oggi = df[
       df["DataInizio"].apply(lambda x: x == oggi if pd.notna(x) else False)
   ]
@@ -135,61 +126,76 @@ if not df.empty:
       df["DataInizio"].apply(lambda x: x >= oggi if pd.notna(x) else False)
   ]
 
-  # --- SEZIONE 1: KPI STATISTICHE ---
+  # --- SEZIONE 1: KPI COMPATTI (Ottimizzati per mobile) ---
   col_m1, col_m2, col_m3 = st.columns(3)
   with col_m1:
-    st.metric("📅 Eventi Totali", len(df))
+    st.metric("Totali", len(df))
   with col_m2:
-    st.metric("🔔 Eventi di Oggi", len(eventi_oggi))
+    st.metric("Oggi", len(eventi_oggi))
   with col_m3:
-    st.metric("🚀 Eventi Futuri", len(eventi_futuri))
+    st.metric("Futuri", len(eventi_futuri))
 
-  st.divider()
+  st.markdown("---")
 
-  # --- SEZIONE 2: ANTEPRIMA EVENTI DI OGGI ---
+  # --- SEZIONE 2: IMPEGNI DI OGGI (Subito in cima!) ---
   if not eventi_oggi.empty:
-    st.subheader("🔔 Impegni di Oggi in Dettaglio")
+    st.subheader("🔔 Impegni di Oggi")
     for _, row in eventi_oggi.iterrows():
-      luogo_txt = f"📍 **Luogo:** {row['Luogo']}" if row["Luogo"] else ""
-      desc_txt = f"📝 **Note:** {row['Descrizione']}" if row["Descrizione"] else ""
+      luogo_txt = f"📍 {row['Luogo']}" if row["Luogo"] else ""
+      desc_txt = f"📝 {row['Descrizione']}" if row["Descrizione"] else ""
 
       with st.container(border=True):
-        st.markdown(f"### 📌 {row['Titolo']}")
-        st.write(f"🕒 **Quando:** {row['Inizio']}")
+        st.markdown(f"**📌 {row['Titolo']}**")
+        st.caption(f"🕒 {row['Inizio']}")
         if luogo_txt:
-          st.write(luogo_txt)
+          st.caption(luogo_txt)
         if desc_txt:
-          st.write(desc_txt)
-    st.divider()
+          st.caption(desc_txt)
+    st.markdown("---")
 
-  # --- SEZIONE 3: ANTEPRIMA PROSSIMI APPUNTAMENTI ---
-  st.subheader("⚡ I prossimi appuntamenti in arrivo")
-  prossimi_futuri = df[
-      df["DataInizio"].apply(lambda x: x > oggi if pd.notna(x) else False)
-  ].head(3)
+  # --- SEZIONE 3: GRIGLIA EVENTI DEL MESE IN CORSO ---
+  st.subheader(f"📅 Appuntamenti del Mese ({oggi.strftime('%B %Y')})")
 
-  if not prossimi_futuri.empty:
-    cols_prev = st.columns(len(prossimi_futuri))
-    for idx, (_, row) in enumerate(prossimi_futuri.iterrows()):
-      with cols_prev[idx]:
-        luogo_txt = f"📍 {row['Luogo']}" if row["Luogo"] else "📍 Nessun luogo"
-        st.info(f"**{row['Titolo']}**\n\n🕒 {row['Inizio']}\n\n{luogo_txt}")
+  # Filtriamo gli eventi che appartengono allo stesso mese e anno odierni (e che sono futuri o di oggi)
+  eventi_mese = eventi_futuri[
+      eventi_futuri["DataInizio"].apply(
+          lambda x: (
+              x.year == oggi.year and x.month == oggi.month
+              if pd.notna(x)
+              else False
+          )
+      )
+  ]
+
+  if not eventi_mese.empty:
+    # Creiamo una griglia a 3 colonne per desktop che diventa a colonna singola automatica su mobile
+    num_colonne = 3
+    colonne = st.columns(num_colonne)
+
+    for idx, (_, row) in enumerate(eventi_mese.iterrows()):
+      col_corrente = colonne[idx % num_colonne]
+      with col_corrente:
+        # Usiamo un contenitore con bordo per ogni "card" della griglia
+        with st.container(border=True):
+          st.markdown(f"**{row['Titolo']}**")
+          st.caption(f"🕒 {row['Inizio']}")
+          if row["Luogo"]:
+            st.caption(f"📍 {row['Luogo']}")
   else:
-    st.write("Nessun altro evento futuro oltre a oggi.")
+    st.info("Nessun altro evento in programma per questo mese.")
 
-  st.divider()
+  st.markdown("---")
 
-  # --- SEZIONE 4: FILTRI AVANZATI ---
-  st.subheader("🔍 Cerca e Filtra")
-  c1, c2, c3 = st.columns(3)
+  # --- SEZIONE 4: RICERCA E FILTRI AVANZATI ---
+  with st.expander("🔍 Altri filtri e ricerca avanzata"):
+    c1, c2 = st.columns(2)
+    with c1:
+      ricerca = st.text_input("Cerca parola chiave:")
+    with c2:
+      periodo = st.selectbox(
+          "Periodo:", ["Solo Futuri", "Tutti", "Solo Passati"]
+      )
 
-  with c1:
-    ricerca = st.text_input("Cerca parola chiave:")
-  with c2:
-    periodo = st.selectbox(
-        "Filtra periodo:", ["Solo Futuri", "Tutti", "Solo Passati"]
-    )
-  with c3:
     min_date = df["DataInizio"].min()
     max_date = df["DataInizio"].max()
     if pd.isna(min_date):
@@ -198,57 +204,52 @@ if not df.empty:
       max_date = oggi
 
     intervallo_date = st.date_input(
-        "Intervallo date:",
+        "Intervallo personalizzato:",
         value=(
             min_date if isinstance(min_date, date) else oggi,
             max_date if isinstance(max_date, date) else oggi,
         ),
     )
 
-  df_f = df.copy()
+    df_f = df.copy()
 
-  # Applicazione filtri
-  if ricerca:
-    df_f = df_f[df_f["Titolo"].str.contains(ricerca, case=False, na=False)]
+    if ricerca:
+      df_f = df_f[df_f["Titolo"].str.contains(ricerca, case=False, na=False)]
 
-  if periodo == "Solo Futuri":
-    df_f = df_f[
-        df_f["DataInizio"].apply(lambda x: x >= oggi if pd.notna(x) else False)
-    ]
-  elif periodo == "Solo Passati":
-    df_f = df_f[
-        df_f["DataInizio"].apply(lambda x: x < oggi if pd.notna(x) else False)
-    ]
+    if periodo == "Solo Futuri":
+      df_f = df_f[
+          df_f["DataInizio"].apply(lambda x: x >= oggi if pd.notna(x) else False)
+      ]
+    elif periodo == "Solo Passati":
+      df_f = df_f[
+          df_f["DataInizio"].apply(lambda x: x < oggi if pd.notna(x) else False)
+      ]
 
-  if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
-    data_inizio_scelta, data_fine_scelta = intervallo_date
-    df_f = df_f[
-        df_f["DataInizio"].apply(
-            lambda x: (data_inizio_scelta <= x <= data_fine_scelta)
-            if pd.notna(x)
-            else False
-        )
-    ]
+    if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
+      data_inizio_scelta, data_fine_scelta = intervallo_date
+      df_f = df_f[
+          df_f["DataInizio"].apply(
+              lambda x: (data_inizio_scelta <= x <= data_fine_scelta)
+              if pd.notna(x)
+              else False
+          )
+      ]
 
-  st.divider()
+    st.subheader(f"Risultati ({len(df_f)})")
+    st.dataframe(
+        df_f[["Titolo", "Inizio", "Luogo", "Descrizione"]],
+        use_container_width=True,
+    )
 
-  # --- SEZIONE 5: TABELLA DATI E DOWNLOAD ---
-  st.subheader(f"📋 Elenco Eventi ({len(df_f)} risultati)")
-
-  st.dataframe(
-      df_f[["Titolo", "Inizio", "Luogo", "Descrizione"]],
-      use_container_width=True,
-  )
-
-  csv_data = df_f[
-      ["Titolo", "Inizio", "Luogo", "Descrizione"]
-  ].to_csv(index=False)
-  st.download_button(
-      label="📥 Scarica eventi filtrati (CSV)",
-      data=csv_data,
-      file_name="miei_eventi_calendario.csv",
-      mime="text/csv",
-  )
+    csv_data = df_f[
+        ["Titolo", "Inizio", "Luogo", "Descrizione"]
+    ].to_csv(index=False)
+    st.download_button(
+        label="📥 Scarica CSV",
+        data=csv_data,
+        file_name="miei_eventi_calendario.csv",
+        mime="text/csv",
+    )
 
 else:
   st.warning("Nessun evento trovato o errore di connessione al calendario.")
