@@ -8,6 +8,16 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
+# Script JS per forzare lo scroll in cima all'apertura dell'app
+st.markdown(
+    """
+    <script>
+        window.scrollTo(0, 0);
+    </script>
+    """,
+    unsafe_allow_html=True,
+)
+
 # Stile CSS con importazione del font Montserrat, titolo responsive e layout ultra-compatto per mobile
 st.markdown(
     """
@@ -21,16 +31,16 @@ st.markdown(
 
     /* Riduzione spazi generali per dispositivi mobili */
     .block-container {
-        padding-top: 1rem !important;
+        padding-top: 0.8rem !important;
         padding-bottom: 1rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
     }
 
-    /* Titolo principale responsivo (sta su un'unica riga anche su mobile) */
+    /* Titolo principale responsivo (sta su un'unica riga senza icona) */
     h1.custom-title {
         color: #2e7d32 !important;
-        font-size: 2.4rem !important;
+        font-size: 2.2rem !important;
         font-weight: 900 !important;
         padding-top: 0px;
         margin-top: -10px;
@@ -41,15 +51,20 @@ st.markdown(
 
     @media (max-width: 640px) {
         h1.custom-title {
-            font-size: 1.9rem !important;
+            font-size: 1.7rem !important;
         }
     }
 
+    /* Card quadrate compatte e moderne */
     .event-card {
         padding: 10px;
-        border-radius: 8px;
-        margin-bottom: 8px;
+        border-radius: 10px;
+        margin-bottom: 10px;
         border-left: 4px solid rgba(0,0,0,0.15);
+        min-height: 125px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
     .event-completato {
         opacity: 0.55;
@@ -60,7 +75,7 @@ st.markdown(
         color: #2e7d32;
         padding: 2px 6px;
         border-radius: 4px;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 600;
     }
     .badge-lavoro {
@@ -68,7 +83,7 @@ st.markdown(
         color: #1565c0;
         padding: 2px 6px;
         border-radius: 4px;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 600;
     }
     .badge-priorita {
@@ -76,7 +91,7 @@ st.markdown(
         color: #c62828;
         padding: 2px 6px;
         border-radius: 4px;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 600;
     }
     
@@ -90,9 +105,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Intestazione HTML con il titolo ottimizzato
+# Intestazione HTML con il titolo pulito senza icona
 st.markdown(
-    '<h1 class="custom-title">📅 La mia agenda</h1>', unsafe_allow_html=True
+    '<h1 class="custom-title">La mia agenda</h1>', unsafe_allow_html=True
 )
 st.caption("Sincronizzato in tempo reale (Fuso orario: Roma)")
 
@@ -324,7 +339,7 @@ if not df.empty:
             st.rerun()
     st.markdown("---")
 
-  # --- SEZIONE 3: GRIGLIA EVENTI CON FILTRO MESE CAMBIABILE ED ORDINAMENTO CRONOLOGICO ---
+  # --- SEZIONE 3: GRIGLIA EVENTI PER MESE (2 Colonne con checkbox integrato) ---
   st.subheader("🗓️ Appuntamenti per Mese")
 
   df_con_date = df.dropna(subset=["DataInizio"]).copy()
@@ -365,8 +380,7 @@ if not df.empty:
     ].sort_values(by="DataInizio", ascending=True)
 
     if not eventi_mese.empty:
-      # Su mobile Streamlit adatta automaticamente le colonne, ma riduciamo a 2 o usiamo la griglia flessibile
-      num_colonne = 2 if st.get_option("client.showErrorDetails") else 2
+      num_colonne = 2
       colonne = st.columns(num_colonne)
 
       colori_sfondo = [
@@ -402,30 +416,36 @@ if not df.empty:
         classe_card = (
             "event-card event-completato" if is_completato else "event-card"
         )
+        luogo_str = f"📍 {row['Luogo']}" if row["Luogo"] else ""
 
         with col_corrente:
-          luogo_str = f"📍 {row['Luogo']}" if row["Luogo"] else ""
-          st.markdown(
-              f"""
-                  <div class="{classe_card}" style="background-color: {colore_corrente};">
-                      <strong>{row['Titolo']}</strong><br>
-                      <small>🕒 {row['Inizio']}</small><br>
-                      <small>{luogo_str}</small><br>
-                      <div style="margin-top: 4px;">{badge_cat} {badge_pri}</div>
-                  </div>
-                  """,
-              unsafe_allow_html=True,
-          )
-
-          nuovo_stato_card = st.checkbox(
-              "Fatto", value=is_completato, key=f"chk_mese_{idx}_{uid}"
-          )
-          if nuovo_stato_card and uid not in st.session_state.completati:
-            st.session_state.completati.add(uid)
-            st.rerun()
-          elif not nuovo_stato_card and uid in st.session_state.completati:
-            st.session_state.completati.remove(uid)
-            st.rerun()
+          # Container per unire card visiva e checkbox al suo interno in modo pulito
+          with st.container(border=True):
+            col_testo, col_chk = st.columns([3, 1])
+            with col_testo:
+              st.markdown(
+                  f"""
+                      <div class="{classe_card}" style="background-color: {colore_corrente}; border:none; margin-bottom:0; padding:0;">
+                          <strong>{row['Titolo']}</strong><br>
+                          <small>🕒 {row['Inizio']}</small><br>
+                          <small>{luogo_str}</small><br>
+                          <div style="margin-top: 4px;">{badge_cat} {badge_pri}</div>
+                      </div>
+                      """,
+                  unsafe_allow_html=True,
+              )
+            with col_chk:
+              nuovo_stato_card = st.checkbox(
+                  "Fatto", value=is_completato, key=f"chk_mese_{idx}_{uid}"
+              )
+              if nuovo_stato_card and uid not in st.session_state.completati:
+                st.session_state.completati.add(uid)
+                st.rerun()
+              elif (
+                  not nuovo_stato_card and uid in st.session_state.completati
+              ):
+                st.session_state.completati.remove(uid)
+                st.rerun()
     else:
       st.info("Nessun evento in programma per il mese selezionato.")
   else:
@@ -476,10 +496,8 @@ if not df.empty:
       ]
     elif periodo == "Solo Passati":
       df_f = df_f[
-          df_f["DataInzipgio"].apply(
-              lambda x: x < oggi if pd.notna(x) else False
-          )
-      ]  # Corretto typo nel nome colonna originale
+          df_f["DataInizio"].apply(lambda x: x < oggi if pd.notna(x) else False)
+      ]
 
     if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
       data_inizio_scelta, data_fine_scelta = intervallo_date
