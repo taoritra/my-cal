@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS per font, spaziature e griglia fissa a 2 colonne anche su mobile
+# Stile CSS per font, spaziature e griglia fissa a 2 colonne reali anche su mobile
 st.markdown(
     """
     <style>
@@ -45,19 +45,12 @@ st.markdown(
         }
     }
 
-    /* GRIGLIA CSS FORZATA A 2 COLONNE (Funziona anche su smartphone) */
+    /* GRIGLIA CSS FORZATA A 2 COLONNE (Funziona perfettamente anche su smartphone) */
     .cards-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 8px;
-        margin-bottom: 10px;
-    }
-
-    @media (max-width: 400px) {
-        .cards-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 6px;
-        }
+        margin-bottom: 8px;
     }
 
     /* Card eventi */
@@ -202,7 +195,7 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE ---
+# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE PULITA ---
 def renderizza_griglia_card(df_eventi, chiave_prefisso):
     colori_sfondo = [
         "rgba(255, 223, 186, 0.4)", "rgba(186, 225, 255, 0.4)", 
@@ -210,40 +203,40 @@ def renderizza_griglia_card(df_eventi, chiave_prefisso):
         "rgba(230, 218, 255, 0.4)", "rgba(255, 255, 186, 0.4)"
     ]
 
-    html_content = '<div class="cards-grid">'
+    html_blocks = ['<div class="cards-grid">']
 
     for idx, (_, row) in enumerate(df_eventi.iterrows()):
         uid = row["UID"]
         is_completato = uid in st.session_state.completati
         colore_corrente = colori_sfondo[idx % len(colori_sfondo)]
 
-        badge_cat = f'<span class="badge-lavoro">Lavoro</span>' if row["Categoria"] == "Lavoro" else (f'<span class="badge-casa">Casa</span>' if row["Categoria"] == "Casa" else "")
-        badge_pri = f'<span class="badge-priorita">⚠️ Alta</span>' if row["Priorità"] == "Alta" else ""
+        badge_cat = '<span class="badge-lavoro">Lavoro</span>' if row["Categoria"] == "Lavoro" else ('<span class="badge-casa">Casa</span>' if row["Categoria"] == "Casa" else "")
+        badge_pri = '<span class="badge-priorita">⚠️ Alta</span>' if row["Priorità"] == "Alta" else ""
         classe_card = "event-card event-completato" if is_completato else "event-card"
         luogo_str = f"📍 {row['Luogo']}" if row["Luogo"] else ""
 
-        html_content += f"""
-        <div class="{classe_card}" style="background-color: {colore_corrente};">
-            <div>
-                <strong style="font-size: 0.85rem; display: block; line-height: 1.2;">{row['Titolo']}</strong>
-                <div style="font-size: 0.72rem; margin-top: 3px; color: #444;">🕒 {row['Inizio']}</div>
-                <div style="font-size: 0.72rem; color: #666;">{luogo_str}</div>
-            </div>
-            <div style="margin-top: 6px; display: flex; justify-content: space-between; align-items: center;">
-                <div>{badge_cat} {badge_pri}</div>
-            </div>
-        </div>
-        """
+        card_html = (
+            f'<div class="{classe_card}" style="background-color: {colore_corrente};">'
+            f'<div>'
+            f'<strong style="font-size: 0.82rem; display: block; line-height: 1.2;">{row["Titolo"]}</strong>'
+            f'<div style="font-size: 0.7rem; margin-top: 3px; color: #444;">🕒 {row["Inizio"]}</div>'
+            f'<div style="font-size: 0.7rem; color: #666;">{luogo_str}</div>'
+            f'</div>'
+            f'<div style="margin-top: 5px;">{badge_cat} {badge_pri}</div>'
+            f'</div>'
+        )
+        html_blocks.append(card_html)
 
-    html_content += '</div>'
-    st.markdown(html_content, unsafe_allow_html=True)
+    html_blocks.append('</div>')
+    st.markdown("".join(html_blocks), unsafe_allow_html=True)
 
-    st.markdown("<div style='font-size: 0.75rem; color: #666; margin-top: 4px;'>Spunta gli impegni completati:</div>", unsafe_allow_html=True)
+    # Sezione checkbox compatta per spuntare i completati
+    st.markdown("<div style='font-size: 0.72rem; color: #666; margin-top: 4px;'>Spunta gli impegni completati:</div>", unsafe_allow_html=True)
     
     for idx, (_, row) in enumerate(df_eventi.iterrows()):
         uid = row["UID"]
         is_completato = uid in st.session_state.completati
-        nuovo_stato = st.checkbox(f"Fatto: {row['Titolo'][:20]}...", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{uid}")
+        nuovo_stato = st.checkbox(f"Fatto: {row['Titolo'][:22]}...", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{uid}")
         if nuovo_stato and uid not in st.session_state.completati:
             st.session_state.completati.add(uid)
             st.rerun()
