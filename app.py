@@ -8,18 +8,16 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS con checkbox integrata nella card e testi ingranditi e leggibili
+# Stile CSS generale e ottimizzazione caratteri
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
 
-    /* Applicazione globale del font Montserrat */
     html, body, [class*="css"] {
         font-family: 'Montserrat', sans-serif !important;
     }
 
-    /* Gestione degli spazi della pagina */
     .block-container {
         padding-top: 2rem !important;
         padding-bottom: 1rem !important;
@@ -27,7 +25,6 @@ st.markdown(
         padding-right: 0.5rem !important;
     }
 
-    /* Titolo principale */
     h1.custom-title {
         color: #1b5e20 !important;
         font-size: 1.8rem !important;
@@ -44,99 +41,14 @@ st.markdown(
         }
     }
 
-    /* RIGA DELLA GRIGLIA: 2 colonne fisse al 50% */
-    .row-card-2col {
-        display: flex;
-        flex-direction: row;
-        gap: 10px;
-        margin-bottom: 10px;
-        width: 100%;
-    }
-
-    .col-card-item {
-        flex: 1 1 50%;
-        max-width: 50%;
-        box-sizing: border-box;
-    }
-
-    /* Card eventi ottimizzata con testi più grandi e leggibili */
-    .event-card {
-        border-radius: 12px;
-        padding: 12px;
-        min-height: 165px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        box-sizing: border-box;
-        border: 1px solid rgba(0,0,0,0.08);
-        box-shadow: 0 3px 6px rgba(0,0,0,0.03);
-        overflow: hidden;
-    }
-    .event-completato {
-        opacity: 0.55;
-        text-decoration: line-through;
-    }
-
-    /* Testi card ingranditi */
-    .card-title {
-        font-size: 0.95rem !important;
-        font-weight: 700 !important;
-        display: block;
-        line-height: 1.25;
-        max-height: 2.5em;
-        overflow: hidden;
-        color: #2c3e50;
-        margin-bottom: 4px;
-    }
-    .card-info {
-        font-size: 0.8rem !important;
-        font-weight: 500 !important;
-        color: #444;
-        margin-bottom: 2px;
-    }
-    .card-luogo {
-        font-size: 0.75rem !important;
-        color: #555;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-bottom: 4px;
-    }
-
-    /* Badge con colori vivaci */
-    .badge-casa {
-        background-color: #d1e7dd;
-        color: #0f5132;
-        padding: 3px 7px;
-        border-radius: 5px;
-        font-size: 0.7rem;
-        font-weight: 700;
-    }
-    .badge-lavoro {
-        background-color: #cfe2ff;
-        color: #084298;
-        padding: 3px 7px;
-        border-radius: 5px;
-        font-size: 0.7rem;
-        font-weight: 700;
-    }
-    .badge-priorita {
-        background-color: #f8d7da;
-        color: #842029;
-        padding: 3px 7px;
-        border-radius: 5px;
-        font-size: 0.7rem;
-        font-weight: 700;
-    }
-
-    /* Adattamento checkbox Streamlit incorporato */
+    /* Adattamento checkbox interne alle card */
     [data-testid="stCheckbox"] {
-        margin: 0px !important;
-        padding: 0px !important;
+        margin-top: 5px !important;
+        margin-bottom: 0px !important;
     }
     [data-testid="stCheckbox"] label {
-        font-size: 0.8rem !important;
-        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        font-weight: 700 !important;
         color: #2c3e50 !important;
     }
 
@@ -241,63 +153,49 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE CON CHECKBOX INTERNA ---
-def renderizza_griglia_card(df_eventi, chiave_prefisso):
-    colori_pastello = [
-        "#fdf2e9", "#e8f8f5", "#ebf5fb", "#f4ecf7", "#fef9e7", "#f2f4f4"
-    ]
+# --- FUNZIONE PER RENDERIZZARE LA SINGOLA CARD NATIVA ---
+def renderizza_singola_card(item, idx, chiave_prefisso):
+    uid = item["UID"]
+    is_completato = uid in st.session_state.completati
+    stile_opacita = "opacity: 0.5; text-decoration: line-through;" if is_completato else ""
 
+    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
+    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 700; margin-left: 5px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
+    luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
+
+    # Container nativo con bordo e checkbox inclusa all'interno
+    with st.container(border=True):
+        st.markdown(
+            f'<div style="{stile_opacita">'
+            f'<div style="font-size: 1.05rem; font-weight: 800; color: #2c3e50; line-height: 1.3; margin-bottom: 6px;">{item["Titolo"]}</div>'
+            f'<div style="font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 4px;">🕒 {item["Inizio"]}</div>'
+            f'<div style="font-size: 0.8rem; color: #666; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{luogo_str}</div>'
+            f'<div style="margin-bottom: 4px;">{badge_cat} {badge_pri}</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+        
+        nuovo_stato = st.checkbox("Completato", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{uid}")
+        if nuovo_stato and uid not in st.session_state.completati:
+            st.session_state.completati.add(uid)
+            st.rerun()
+        elif not nuovo_stato and uid in st.session_state.completati:
+            st.session_state.completati.remove(uid)
+            st.rerun()
+
+# --- FUNZIONE PER LA GRIGLIA A 2 COLONNE ---
+def renderizza_griglia_card(df_eventi, chiave_prefisso):
     lista_eventi = df_eventi.to_dict('records')
 
     for i in range(0, len(lista_eventi), 2):
-        coppia = [lista_eventi[i]]
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            renderizza_singola_card(lista_eventi[i], i, chiave_prefisso)
+            
         if i + 1 < len(lista_eventi):
-            coppia.append(lista_eventi[i+1])
-
-        # Creazione riga CSS a 2 colonne
-        riga_html = '<div class="row-card-2col">'
-        for offset, item in enumerate(coppia):
-            global_idx = i + offset
-            uid = item["UID"]
-            is_completato = uid in st.session_state.completati
-            colore_sfondo = colori_pastello[global_idx % len(colori_pastello)]
-
-            badge_cat = '<span class="badge-lavoro">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span class="badge-casa">Casa</span>' if item["Categoria"] == "Casa" else "")
-            badge_pri = '<span class="badge-priorita">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
-            classe_card = "event-card event-completato" if is_completato else "event-card"
-            luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
-
-            riga_html += (
-                f'<div class="col-card-item">'
-                f'<div class="{classe_card}" style="background-color: {colore_sfondo};">'
-                f'<div>'
-                f'<span class="card-title">{item["Titolo"]}</span>'
-                f'<div class="card-info">🕒 {item["Inizio"]}</div>'
-                f'<div class="card-luogo">{luogo_str}</div>'
-                f'</div>'
-                f'<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">'
-                f'<div>{badge_cat} {badge_pri}</div>'
-                f'</div>'
-                f'</div>'
-                f'</div>'
-            )
-        riga_html += '</div>'
-        st.markdown(riga_html, unsafe_allow_html=True)
-
-        # Mettiamo le checkbox esattamente nello slot speculare della riga sottostante usando colonne Streamlit invisibili
-        cols = st.columns(2)
-        for offset, item in enumerate(coppia):
-            with cols[offset]:
-                uid = item["UID"]
-                is_comp = uid in st.session_state.completati
-                idx = i + offset
-                nuovo_stato = st.checkbox("Fatto", value=is_comp, key=f"chk_{chiave_prefisso}_{idx}_{uid}")
-                if nuovo_stato and uid not in st.session_state.completati:
-                    st.session_state.completati.add(uid)
-                    st.rerun()
-                elif not nuovo_stato and uid in st.session_state.completati:
-                    st.session_state.completati.remove(uid)
-                    st.rerun()
+            with col2:
+                renderizza_singola_card(lista_eventi[i+1], i+1, chiave_prefisso)
 
 # --- CARICAMENTO DATI ---
 with st.spinner("Sincronizzazione in corso..."):
@@ -359,7 +257,7 @@ if not df.empty:
             periodo = st.selectbox("Periodo:", ["Solo Futuri", "Tutti", "Solo Passati"])
 
         min_date = df["DataInizio"].min() if not pd.isna(df["DataInizio"].min()) else oggi
-        max_date = df["DataInizio"].max() if not pd.isna(df["DataInizio"].max()) else oggi  # <-- CORRETTO QUI
+        max_date = df["DataInizio"].max() if not pd.isna(df["DataInizio"].max()) else oggi
 
         intervallo_date = st.date_input("Intervallo:", value=(min_date, max_date))
 
