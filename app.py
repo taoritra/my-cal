@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS per forzare rigorosamente le 2 colonne affiancate anche su mobile
+# Stile CSS con calcolo esatto per 2 colonne senza scroll orizzontale su mobile
 st.markdown(
     """
     <style>
@@ -19,10 +19,11 @@ st.markdown(
     }
 
     .block-container {
-        padding-top: 1.0rem !important;
+        padding-top: 1.2rem !important;
         padding-bottom: 1.0rem !important;
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
+        max-width: 100% !important;
     }
 
     /* Titolo principale */
@@ -35,22 +36,25 @@ st.markdown(
         letter-spacing: -0.5px;
     }
 
-    /* FORZA 2 COLONNE AFFIANCATE SEMPRE (ANCHE SU MOBILE) SENZA SCROLL ORIZZONTALE */
+    /* 2 COLONNE PERFETTE SENZA SCROLL (Il trucco è sottrarre metà del gap dal 50%) */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         gap: 6px !important;
         width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     [data-testid="column"] {
-        flex: 0 0 48.5% !important;
-        width: 48.5% !important;
+        flex: 0 0 calc(50% - 3px) !important;
+        width: calc(50% - 3px) !important;
         min-width: 0 !important;
+        max-width: calc(50% - 3px) !important;
+        box-sizing: border-box !important;
     }
 
-    /* Checkbox integrata nello stile della card */
+    /* Checkbox integrata visivamente sotto la card con lo stesso stile */
     [data-testid="stCheckbox"] {
         padding: 2px 6px 6px 6px !important;
         border-bottom-left-radius: 8px;
@@ -176,8 +180,8 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     is_completato = uid in st.session_state.completati
     stile_opacita = "opacity: 0.4; text-decoration: line-through;" if is_completato else ""
 
-    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 2px 4px; border-radius: 4px; font-size: 0.6rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 2px 4px; border-radius: 4px; font-size: 0.6rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
-    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 2px 4px; border-radius: 4px; font-size: 0.6rem; font-weight: 700; margin-left: 3px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
+    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 2px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 2px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
+    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 2px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: 700; margin-left: 3px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
     luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
 
     # Parte superiore della card (testo)
@@ -185,8 +189,8 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
         f"""
         <div style="background-color: {colore_sfondo}; border-top-left-radius: 8px; border-top-right-radius: 8px; padding: 8px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); box-shadow: 0 1px 2px rgba(0,0,0,0.02); {stile_opacita}">
             <div style="font-size: 0.8rem; font-weight: 800; color: #2c3e50; line-height: 1.2; margin-bottom: 3px;">{item["Titolo"]}</div>
-            <div style="font-size: 0.65rem; font-weight: 600; color: #444; margin-bottom: 2px;">🕒 {item["Inizio"]}</div>
-            <div style="font-size: 0.6rem; color: #666; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{luogo_str}</div>
+            <div style="font-size: 0.7rem; font-weight: 600; color: #444; margin-bottom: 2px;">🕒 {item["Inizio"]}</div>
+            <div style="font-size: 0.65rem; color: #666; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{luogo_str}</div>
             <div>{badge_cat} {badge_pri}</div>
         </div>
         """,
