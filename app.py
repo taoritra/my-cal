@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS ultra-compatto per azzerare gli spazi vuoti
+# Stile CSS bilanciato (spaziatura pulita e ordinata, non appiccicata)
 st.markdown(
     """
     <style>
@@ -19,54 +19,38 @@ st.markdown(
     }
 
     .block-container {
-        padding-top: 0.8rem !important;
-        padding-bottom: 0.8rem !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
-    }
-
-    /* Annulla i margini verticali di default di Streamlit tra gli elementi */
-    div.stVerticalBlock {
-        gap: 0rem !important;
-    }
-    
-    div.element-container {
-        margin-bottom: 0px !important;
+        padding-top: 1.0rem !important;
+        padding-bottom: 1.0rem !important;
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
     }
 
     /* Titolo principale */
     h1.custom-title {
         color: #1b5e20 !important;
-        font-size: 1.3rem !important;
+        font-size: 1.5rem !important;
         font-weight: 900 !important;
         margin-top: 0px !important;
         margin-bottom: 0px !important;
         letter-spacing: -0.5px;
     }
 
-    /* Stile checkbox ultra-compatta attaccata alla card */
+    /* Stile checkbox integrata con il giusto distacco tra le card */
     [data-testid="stCheckbox"] {
-        padding: 0px 6px 3px 6px !important;
-        border-bottom-left-radius: 6px;
-        border-bottom-right-radius: 6px;
-        margin-top: -4px !important;
-        margin-bottom: 3px !important; /* Spazio minimo vitale tra una card e l'altra */
+        padding: 2px 8px 4px 8px !important;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        margin-top: -6px !important;
+        margin-bottom: 12px !important; /* Spazio equilibrato tra le card */
         border-left: 1px solid rgba(0,0,0,0.08);
         border-right: 1px solid rgba(0,0,0,0.08);
         border-bottom: 1px solid rgba(0,0,0,0.08);
     }
     
     [data-testid="stCheckbox"] label {
-        font-size: 0.65rem !important;
+        font-size: 0.7rem !important;
         font-weight: 700 !important;
         color: #2c3e50 !important;
-    }
-    
-    /* Riduce lo spazio dei sottotitoli e dei separatori */
-    h2, h3 {
-        padding-top: 0.4rem !important;
-        padding-bottom: 0.2rem !important;
-        font-size: 1.1rem !important;
     }
     </style>
 """,
@@ -167,7 +151,7 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- RENDERIZZAZIONE SINGOLA CARD SUPER COMPATTA ---
+# --- RENDERIZZAZIONE SINGOLA CARD ---
 def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     uid = item["UID"]
     
@@ -177,17 +161,17 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     is_completato = uid in st.session_state.completati
     stile_opacita = "opacity: 0.4; text-decoration: line-through;" if is_completato else ""
 
-    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 1px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 1px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
-    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 1px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: 700; margin-left: 3px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
+    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
+    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; margin-left: 4px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
     luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
 
-    # Parte superiore della card ridotta al minimo indispensabile
+    # Parte superiore della card
     st.markdown(
         f"""
-        <div style="background-color: {colore_sfondo}; border-top-left-radius: 6px; border-top-right-radius: 6px; padding: 6px 8px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); {stile_opacita}">
-            <div style="font-size: 0.85rem; font-weight: 800; color: #2c3e50; line-height: 1.1; margin-bottom: 2px;">{item["Titolo"]}</div>
-            <div style="font-size: 0.65rem; font-weight: 600; color: #444; margin-bottom: 1px;">🕒 {item["Inizio"]}</div>
-            <div style="font-size: 0.6rem; color: #666; margin-bottom: 3px;">{luogo_str}</div>
+        <div style="background-color: {colore_sfondo}; border-top-left-radius: 8px; border-top-right-radius: 8px; padding: 8px 10px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); {stile_opacita}">
+            <div style="font-size: 0.9rem; font-weight: 800; color: #2c3e50; line-height: 1.2; margin-bottom: 2px;">{item["Titolo"]}</div>
+            <div style="font-size: 0.7rem; font-weight: 600; color: #444; margin-bottom: 2px;">🕒 {item["Inizio"]}</div>
+            <div style="font-size: 0.65rem; color: #666; margin-bottom: 4px;">{luogo_str}</div>
             <div>{badge_cat} {badge_pri}</div>
         </div>
         """,
@@ -227,13 +211,13 @@ if not df.empty:
 
     # 1. SOMMARIO COMPATTO
     st.markdown(f"📌 **Oggi:** `{len(eventi_oggi)}` &nbsp;|&nbsp; 🚀 **Futuri:** `{len(eventi_futuri)}` &nbsp;|&nbsp; 📅 **Totali:** `{len(df)}`")
-    st.markdown('<hr style="margin: 0.2rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
+    st.markdown('<hr style="margin: 0.3rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
 
     # 2. IMPEGNI DI OGGI
     if not eventi_oggi.empty:
         st.subheader("🔔 Impegni di Oggi")
         renderizza_lista_card(eventi_oggi, "oggi")
-        st.markdown('<hr style="margin: 0.2rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
+        st.markdown('<hr style="margin: 0.3rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
 
     # 3. EVENTI PER MESE
     st.subheader("🗓️ Appuntamenti per Mese")
@@ -260,7 +244,7 @@ if not df.empty:
     else:
         st.info("Nessuna data valida trovata nel calendario.")
 
-    st.markdown('<hr style="margin: 0.2rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
+    st.markdown('<hr style="margin: 0.3rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
 
     # 4. RICERCA E FILTRI
     with st.expander("🔍 Altri filtri e ricerca avanzata"):
