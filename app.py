@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS per forzare la griglia a 2 colonne reali e lo stile integrato
+# Stile CSS globale e griglia a 2 colonne forzata via CSS puro (perfetta anche su mobile)
 st.markdown(
     """
     <style>
@@ -21,33 +21,80 @@ st.markdown(
     .block-container {
         padding-top: 1.5rem !important;
         padding-bottom: 1.0rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
     }
 
     /* Titolo principale */
     h1.custom-title {
         color: #1b5e20 !important;
-        font-size: 1.8rem !important;
+        font-size: 1.6rem !important;
         font-weight: 900 !important;
         margin-top: 0px !important;
         margin-bottom: 0px !important;
         letter-spacing: -0.5px;
     }
 
-    /* FORZA 2 COLONNE AFFIANCATE IN STREAMLIT */
-    [data-testid="column"] {
-        width: 48% !important;
-        flex: 1 1 48% !important;
-        min-width: 250px !important;
-        float: left;
+    /* GRIGLIA A 2 COLONNE PURA CSS (Funziona perfettamente su mobile senza rompersi) */
+    .agenda-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 15px;
     }
 
-    /* Fix per evitare lo stacking verticale delle colonne nei container stretti */
-    [data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: wrap !important;
+    /* Stile della singola card con checkbox integrata */
+    .agenda-card {
+        border-radius: 10px;
+        padding: 10px;
+        border: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .card-title {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #2c3e50;
+        line-height: 1.2;
+        margin-bottom: 4px;
+    }
+
+    .card-time {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #444;
+        margin-bottom: 2px;
+    }
+
+    .card-location {
+        font-size: 0.7rem;
+        color: #666;
+        margin-bottom: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .card-badges {
+        margin-bottom: 8px;
+    }
+
+    /* Adattamento checkbox interna */
+    .card-footer {
+        border-top: 1px solid rgba(0,0,0,0.06);
+        padding-top: 6px;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+    }
+    
+    [data-testid="stCheckbox"] label {
+        font-size: 0.75rem !important;
+        font-weight: 700 !important;
+        color: #2c3e50 !important;
     }
     </style>
 """,
@@ -148,57 +195,72 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- RENDERIZZAZIONE SINGOLA CARD CON CHECKBOX INTERNA ---
-def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
-    uid = item["UID"]
-    
-    if "completati" not in st.session_state:
-        st.session_state.completati = set()
-        
-    is_completato = uid in st.session_state.completati
-    stile_opacita = "opacity: 0.4; text-decoration: line-through;" if is_completato else ""
-
-    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
-    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; margin-left: 5px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
-    luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
-
-    # Contenitore unificato della card
-    st.markdown(
-        f"""
-        <div style="background-color: {colore_sfondo}; border-radius: 10px; padding: 12px; margin-bottom: 12px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 2px 4px rgba(0,0,0,0.02); {stile_opacita}">
-            <div style="font-size: 1rem; font-weight: 800; color: #2c3e50; line-height: 1.3; margin-bottom: 4px;">{item["Titolo"]}</div>
-            <div style="font-size: 0.8rem; font-weight: 600; color: #444; margin-bottom: 2px;">🕒 {item["Inizio"]}</div>
-            <div style="font-size: 0.75rem; color: #666; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{luogo_str}</div>
-            <div style="margin-bottom: 6px;">{badge_cat} {badge_pri}</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    
-    # Checkbox posizionata subito sotto nel flusso visivo della stessa colonna
-    nuovo_stato = st.checkbox("Completato", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{abs(hash(uid))}")
-    if nuovo_stato and uid not in st.session_state.completati:
-        st.session_state.completati.add(uid)
-        st.rerun()
-    elif not nuovo_stato and uid in st.session_state.completati:
-        st.session_state.completati.remove(uid)
-        st.rerun()
-
-# --- GRIGLIA A 2 COLONNE REALI ---
+# --- RENDERIZZAZIONE GRIGLIA A 2 COLONNE CON CSS GRID E CHECKBOX INTERNE ---
 def renderizza_griglia_card(df_eventi, chiave_prefisso):
     colori_pastello = ["#fdf2e9", "#e8f8f5", "#ebf5fb", "#f4ecf7", "#fef9e7", "#f2f4f4"]
     lista_eventi = df_eventi.to_dict('records')
+    
+    if "completati" not in st.session_state:
+        st.session_state.completati = set()
 
+    # Raggruppiamo gli elementi a coppie per la griglia CSS a 2 colonne
     for i in range(0, len(lista_eventi), 2):
+        html_riga = '<div class="agenda-grid">'
+        
+        # Gestiamo elemento sinistro e destro
+        elementi_coppia = []
+        for offset in range(2):
+            idx = i + offset
+            if idx < len(lista_eventi):
+                item = lista_eventi[idx]
+                uid = item["UID"]
+                is_completato = uid in st.session_state.completati
+                stile_opacita = "opacity: 0.4; text-decoration: line-through;" if is_completato else ""
+                colore_sfondo = colori_pastello[idx % len(colori_pastello)]
+
+                badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
+                badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; margin-left: 5px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
+                luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
+
+                card_html = (
+                    f'<div class="agenda-card" style="background-color: {colore_sfondo}; {stile_opacita}">'
+                    f'<div>'
+                    f'<div class="card-title">{item["Titolo"]}</div>'
+                    f'<div class="card-time">🕒 {item["Inizio"]}</div>'
+                    f'<div class="card-location">{luogo_str}</div>'
+                    f'<div class="card-badges">{badge_cat} {badge_pri}</div>'
+                    f'</div>'
+                )
+                elementi_coppia.append((item, card_html, idx, uid, is_completato))
+            else:
+                elementi_coppia.append(None)
+
+        # Creiamo un contenitore Streamlit diviso in 2 colonne reali per ospitare le checkbox interattive
         col1, col2 = st.columns(2)
         
         with col1:
-            if i < len(lista_eventi):
-                renderizza_singola_card(lista_eventi[i], i, chiave_prefisso, colori_pastello[i % len(colori_pastello)])
-            
+            if elementi_coppia[0]:
+                item, html_card, idx, uid, is_completato = elementi_coppia[0]
+                st.markdown(html_card + '</div>', unsafe_allow_html=True) # Chiude la card prima della checkbox
+                nuovo_stato = st.checkbox("Completato", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{abs(hash(uid))}")
+                if nuovo_stato and uid not in st.session_state.completati:
+                    st.session_state.completati.add(uid)
+                    st.rerun()
+                elif not nuovo_stato and uid in st.session_state.completati:
+                    st.session_state.completati.remove(uid)
+                    st.rerun()
+
         with col2:
-            if i + 1 < len(lista_eventi):
-                renderizza_singola_card(lista_eventi[i+1], i+1, chiave_prefisso, colori_pastello[(i+1) % len(colori_pastello)])
+            if elementi_coppia[1]:
+                item, html_card, idx, uid, is_completato = elementi_coppia[1]
+                st.markdown(html_card + '</div>', unsafe_allow_html=True)
+                nuovo_stato = st.checkbox("Completato", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{abs(hash(uid))}")
+                if nuovo_stato and uid not in st.session_state.completati:
+                    st.session_state.completati.add(uid)
+                    st.rerun()
+                elif not nuovo_stato and uid in st.session_state.completati:
+                    st.session_state.completati.remove(uid)
+                    st.rerun()
 
 # --- CARICAMENTO DATI ---
 with st.spinner("Sincronizzazione in corso..."):
