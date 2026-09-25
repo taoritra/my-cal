@@ -23,6 +23,47 @@ except Exception:
   st.stop()
 
 
+# Funzione di supporto per formattare la data in italiano
+def formatta_data_italiano(dt_val):
+  if isinstance(dt_val, datetime):
+    d = dt_val.date()
+    ora_str = dt_val.strftime("alle %H:%M")
+  else:
+    d = dt_val
+    ora_str = ""
+
+  if isinstance(d, date):
+    giorni = [
+        "Lunedì",
+        "Martedì",
+        "Mercoledì",
+        "Giovedì",
+        "Venerdì",
+        "Sabato",
+        "Domenica",
+    ]
+    mesi = [
+        "",
+        "gennaio",
+        "febbraio",
+        "marzo",
+        "aprile",
+        "maggio",
+        "giugno",
+        "luglio",
+        "agosto",
+        "settembre",
+        "ottobre",
+        "novembre",
+        "dicembre",
+    ]
+    nome_giorno = giorni[d.weekday()]
+    nome_mese = mesi[d.month]
+    data_formattata = f"{nome_giorno} {d.day} {nome_mese} {d.year}"
+    return f"{data_formattata} {ora_str}".strip()
+  return "Non definita"
+
+
 @st.cache_data(ttl=600)
 def carica_eventi(url):
   try:
@@ -42,18 +83,18 @@ def carica_eventi(url):
           dt_val = inizio.dt
           if isinstance(dt_val, datetime):
             data_obj = dt_val.date()
-            data_str = dt_val.strftime("%Y-%m-%d %H:%M")
           else:
             data_obj = dt_val
-            data_str = dt_val.strftime("%Y-%m-%d")
+
+          data_str_ita = formatta_data_italiano(dt_val)
         else:
           data_obj = None
-          data_str = "Non definita"
+          data_str_ita = "Data non definita"
 
         eventi.append({
             "Titolo": titolo,
             "DataInizio": data_obj,
-            "Inizio": data_str,
+            "Inizio": data_str_ita,
             "Luogo": luogo,
             "Descrizione": descrizione,
         })
@@ -76,11 +117,10 @@ with st.spinner("Sincronizzazione della dashboard in corso..."):
 if not df.empty:
   oggi = date.today()
 
-  # Filtri di base per statistiche
   eventi_oggi = df[df["DataInizio"] == oggi]
   eventi_futuri = df[df["DataInizio"] >= oggi]
 
-  # --- SEZIONE 1: KPI E ANTEPRIMA PROSSIMI EVENTI ---
+  # --- SEZIONE 1: KPI STATISTICHE ---
   col_m1, col_m2, col_m3 = st.columns(3)
   with col_m1:
     st.metric("📅 Eventi Totali", len(df))
@@ -91,29 +131,42 @@ if not df.empty:
 
   st.divider()
 
-  # Anteprimi dei prossimi 3 eventi in arrivo
-  st.subheader("⚡ I prossimi appuntamenti")
-  prossimi = eventi_futuri.head(3)
+  # --- SEZIONE 2: ANTEPRIMA EVENTI DI OGGI ---
+  if not eventi_oggi.empty:
+    st.subheader("🔔 Impegni di Oggi")
+    for _, row in eventi_oggi.iterrows():
+      luogo_txt = f"📍 *{row['Luogo']}*" if row["Luogo"] else ""
+      st.success(
+          f"**{row['Titolo']}** — 🕒 {row['Inizio']}  \n{luogo_txt}"
+          f"  \n_{row['Descrizione']}_"
+          if row["Descrizione"]
+          else f"**{row['Titolo']}** — 🕒 {row['Inizio']}  \n{luogo_txt}"
+      )
+    st.divider()
 
-  if not prossimi.empty:
-    cols_prev = st.columns(len(prossimi))
-    for idx, (_, row) in enumerate(prossimi.iterrows()):
+  # --- SEZIONE 3: ANTEPRIMA PROSSIMI APPUNTAMENTI ---
+  st.subheader("⚡ I prossimi appuntamenti in arrivo")
+  # Escludiamo quelli di oggi per mostrare proprio il futuro prossimo
+  prossimi_futuri = eventi_futuri[eventi_futuri["DataInizio"] > oggi].head(3)
+
+  if not prossimi_futuri.empty:
+    cols_prev = st.columns(len(prossimi_futuri))
+    for idx, (_, row) in enumerate(prossimi_futuri.iterrows()):
       with cols_prev[idx]:
         luogo_txt = f"📍 {row['Luogo']}" if row["Luogo"] else "📍 Nessun luogo"
         st.info(f"**{row['Titolo']}**\n\n🕒 {row['Inizio']}\n\n{luogo_txt}")
   else:
-    st.write("Nessun evento futuro in programma.")
+    st.write("Nessun altro evento futuro oltre a oggi.")
 
   st.divider()
 
-  # --- SEZIONE 2: FILTRI AVANZATI ---
+  # --- SEZIONE 4: FILTRI AVANZATI ---
   st.subheader("🔍 Cerca e Filtra")
   c1, c2, c3 = st.columns(3)
 
   with c1:
     ricerca = st.text_input("Cerca parola chiave:")
   with c2:
-    # IMPOSTIAMO "Solo Futuri" COME PRIMA SCELTA DI DEFAULT
     periodo = st.selectbox(
         "Filtra periodo:", ["Solo Futuri", "Tutti", "Solo Passati"]
     )
@@ -153,7 +206,7 @@ if not df.empty:
 
   st.divider()
 
-  # --- SEZIONE 3: TABELLA DATI E DOWNLOAD ---
+  # --- SEZIONE 5: TABELLA DATI E DOWNLOAD ---
   st.subheader(f"📋 Elenco Eventi ({len(df_f)} risultati)")
 
   st.dataframe(
