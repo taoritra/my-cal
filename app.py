@@ -8,17 +8,25 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS per forzare un titolo grande, colorato di verde e stilizzare le card e il testo barrato
+# Stile CSS con importazione del font Montserrat, titolo grande verde, card e checkbox personalizzati
 st.markdown(
     """
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+
+    /* Applicazione globale del font Montserrat */
+    html, body, [class*="css"] {
+        font-family: 'Montserrat', sans-serif !important;
+    }
+
     h1.custom-title {
         color: #2e7d32 !important;
-        font-size: 3.5rem !important;
+        font-size: 3.8rem !important;
         font-weight: 900 !important;
         padding-top: 0px;
         margin-top: -20px;
         margin-bottom: 0px;
+        letter-spacing: -1px;
     }
     .event-card {
         padding: 12px;
@@ -59,7 +67,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Intestazione HTML esplicita molto grande e verde
+# Intestazione HTML con il nuovo font e colore
 st.markdown(
     '<h1 class="custom-title">La mia agenda</h1>', unsafe_allow_html=True
 )
@@ -190,7 +198,6 @@ def carica_eventi(url):
         categoria, priorita = analizza_dettagli_evento(
             titolo, descrizione, cat_str
         )
-        # ID univoco basato su titolo e data per tracciare lo stato di completamento
         uid = f"{titolo}_{str(data_obj)}"
 
         eventi.append({
@@ -222,7 +229,6 @@ with st.spinner("Sincronizzazione in corso..."):
 if not df.empty:
   oggi = get_oggi_italia()
 
-  # Inizializzazione dello stato in Session State per ricordare gli eventi spuntati come completati
   if "completati" not in st.session_state:
     st.session_state.completati = set()
 
@@ -244,7 +250,7 @@ if not df.empty:
   # --- SEZIONE 2: IMPEGNI DI OGGI ---
   if not eventi_oggi.empty:
     st.subheader("🔔 Impegni di Oggi")
-    for _, row in eventi_oggi.iterrows():
+    for idx, (_, row) in enumerate(eventi_oggi.iterrows()):
       uid = row["UID"]
       is_completato = uid in st.session_state.completati
 
@@ -277,9 +283,8 @@ if not df.empty:
               unsafe_allow_html=True,
           )
         with col_c:
-          # Checkbox per completare l'evento
           nuovo_stato = st.checkbox(
-              "Completato", value=is_completato, key=f"chk_oggi_{uid}"
+              "Completato", value=is_completato, key=f"chk_oggi_{idx}_{uid}"
           )
           if nuovo_stato and uid not in st.session_state.completati:
             st.session_state.completati.add(uid)
@@ -374,7 +379,9 @@ if not df.empty:
             else ""
         )
 
-        classe_card = "event-card event-completato" if is_completato else "event-card"
+        classe_card = (
+            "event-card event-completato" if is_completato else "event-card"
+        )
 
         with col_corrente:
           luogo_str = f"📍 {row['Luogo']}" if row["Luogo"] else ""
@@ -390,9 +397,8 @@ if not df.empty:
               unsafe_allow_html=True,
           )
 
-          # Checkbox sotto ogni card per completare l'evento
           nuovo_stato_card = st.checkbox(
-              "Fatto", value=is_completato, key=f"chk_mese_{uid}"
+              "Fatto", value=is_completato, key=f"chk_mese_{idx}_{uid}"
           )
           if nuovo_stato_card and uid not in st.session_state.completati:
             st.session_state.completati.add(uid)
@@ -463,7 +469,6 @@ if not df.empty:
           )
       ]
 
-    # Aggiungiamo una colonna visiva per lo stato completato nella tabella
     df_f["Completato"] = df_f["UID"].apply(
         lambda x: "✅ Sì" if x in st.session_state.completati else "❌ No"
     )
