@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS per griglia fissa a 2 colonne reali, card uniformi e colori pastello/vivaci
+# Stile CSS per griglia CSS pura a 2 colonne reali (forzata anche su mobile)
 st.markdown(
     """
     <style>
@@ -23,8 +23,8 @@ st.markdown(
     .block-container {
         padding-top: 3.5rem !important;
         padding-bottom: 1rem !important;
-        padding-left: 0.8rem !important;
-        padding-right: 0.8rem !important;
+        padding-left: 0.6rem !important;
+        padding-right: 0.6rem !important;
     }
 
     /* Titolo principale responsivo */
@@ -45,18 +45,25 @@ st.markdown(
         }
     }
 
-    /* Card eventi con altezza fissa identica e flexbox */
+    /* GRIGLIA CSS PURA A 2 COLONNE FISSE (Funziona anche su smartphone) */
+    .custom-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    /* Card eventi con altezza fissa identica e flexbox interno */
     .event-card {
         border-radius: 10px;
-        padding: 12px;
-        height: 150px; 
+        padding: 10px;
+        height: 155px; 
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         box-sizing: border-box;
         border: 1px solid rgba(0,0,0,0.06);
         box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        margin-bottom: 10px;
         overflow: hidden;
     }
     .event-completato {
@@ -68,26 +75,31 @@ st.markdown(
     .badge-casa {
         background-color: #d1e7dd;
         color: #0f5132;
-        padding: 2px 6px;
-        border-radius: 6px;
-        font-size: 0.65rem;
+        padding: 2px 5px;
+        border-radius: 5px;
+        font-size: 0.6rem;
         font-weight: 700;
     }
     .badge-lavoro {
         background-color: #cfe2ff;
         color: #084298;
-        padding: 2px 6px;
-        border-radius: 6px;
-        font-size: 0.65rem;
+        padding: 2px 5px;
+        border-radius: 5px;
+        font-size: 0.6rem;
         font-weight: 700;
     }
     .badge-priorita {
         background-color: #f8d7da;
         color: #842029;
-        padding: 2px 6px;
-        border-radius: 6px;
-        font-size: 0.65rem;
+        padding: 2px 5px;
+        border-radius: 5px;
+        font-size: 0.6rem;
         font-weight: 700;
+    }
+
+    /* Stile personalizzato per i widget checkbox per farli compattare bene */
+    [data-testid="stCheckbox"] {
+        margin-top: -5px !important;
     }
     
     /* Riduce lo spazio verticale nei blocchi Streamlit */
@@ -192,14 +204,17 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE CON CHECKBOX INTEGRATE ---
+# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE REALI CON CSS GRID ---
 def renderizza_griglia_card(df_eventi, chiave_prefisso):
     # Palette colori pastello morbidi per lo sfondo delle card
     colori_pastello = [
         "#fdf2e9", "#e8f8f5", "#ebf5fb", "#f4ecf7", "#fef9e7", "#f2f4f4"
     ]
 
-    # Iteriamo a coppie per sfruttare perfettamente le colonne di Streamlit (2 colonne affiancate)
+    # Dividiamo gli eventi in coppie per distribuirli in modo alternato su 2 colonne usando tabelle/colonne Streamlit intelligenti, 
+    # oppure stampando direttamente la griglia HTML affiancata. 
+    # Per consentire le checkbox cliccabili native di Streamlit dentro una griglia a 2 colonne forzata, usiamo colonne a coppie:
+    
     for i in range(0, len(df_eventi), 2):
         col1, col2 = st.columns(2)
         coppia = [df_eventi.iloc[i], df_eventi.iloc[i+1]] if i+1 < len(df_eventi) else [df_eventi.iloc[i]]
@@ -217,22 +232,20 @@ def renderizza_griglia_card(df_eventi, chiave_prefisso):
             luogo_str = f"📍 {row['Luogo']}" if row["Luogo"] else ""
 
             with col_corrente:
-                # Contenitore visivo della card in HTML
                 card_html = (
                     f'<div class="{classe_card}" style="background-color: {colore_sfondo};">'
                     f'<div>'
-                    f'<strong style="font-size: 0.82rem; display: block; line-height: 1.15; max-height: 2.3em; overflow: hidden; color: #2c3e50;">{row["Titolo"]}</strong>'
-                    f'<div style="font-size: 0.68rem; margin-top: 3px; color: #555;">🕒 {row["Inizio"]}</div>'
-                    f'<div style="font-size: 0.68rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{luogo_str}</div>'
+                    f'<strong style="font-size: 0.78rem; display: block; line-height: 1.15; max-height: 2.3em; overflow: hidden; color: #2c3e50;">{row["Titolo"]}</strong>'
+                    f'<div style="font-size: 0.65rem; margin-top: 2px; color: #555;">🕒 {row["Inizio"]}</div>'
+                    f'<div style="font-size: 0.65rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{luogo_str}</div>'
                     f'</div>'
-                    f'<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">'
+                    f'<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">'
                     f'<div>{badge_cat} {badge_pri}</div>'
                     f'</div>'
                     f'</div>'
                 )
                 st.markdown(card_html, unsafe_allow_html=True)
                 
-                # Checkbox nativa posizionata subito sotto all'interno della stessa colonna della griglia
                 nuovo_stato = st.checkbox("Fatto", value=is_completato, key=f"chk_{chiave_prefisso}_{global_idx}_{uid}")
                 if nuovo_stato and uid not in st.session_state.completati:
                     st.session_state.completati.add(uid)
@@ -255,13 +268,13 @@ if not df.empty:
 
     # 1. SOMMARIO COMPATTO
     st.markdown(f"📌 **Oggi:** `{len(eventi_oggi)}` &nbsp;|&nbsp; 🚀 **Futuri:** `{len(eventi_futuri)}` &nbsp;|&nbsp; 📅 **Totali:** `{len(df)}`")
-    st.markdown('<hr style="margin: 0.4rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
+    st.markdown('<hr style="margin: 0.3rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
 
     # 2. IMPEGNI DI OGGI
     if not eventi_oggi.empty:
         st.subheader("🔔 Impegni di Oggi")
         renderizza_griglia_card(eventi_oggi, "oggi")
-        st.markdown('<hr style="margin: 0.4rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
+        st.markdown('<hr style="margin: 0.3rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
 
     # 3. GRIGLIA EVENTI PER MESE
     st.subheader("🗓️ Appuntamenti per Mese")
@@ -288,7 +301,7 @@ if not df.empty:
     else:
         st.info("Nessuna data valida trovata nel calendario.")
 
-    st.markdown('<hr style="margin: 0.4rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
+    st.markdown('<hr style="margin: 0.3rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
 
     # 4. RICERCA E FILTRI
     with st.expander("🔍 Altri filtri e ricerca avanzata"):
@@ -301,7 +314,7 @@ if not df.empty:
             periodo = st.selectbox("Periodo:", ["Solo Futuri", "Tutti", "Solo Passati"])
 
         min_date = df["DataInizio"].min() if not pd.isna(df["DataInizio"].min()) else oggi
-        max_date = df["DataInizio"].max() if not pd.isna(df["DataInizio"].max()) else oggi
+        max_date = df["DataInizio"].max() if not pd.isna(df["DataIn'..."] else oggi
 
         intervallo_date = st.date_input("Intervallo:", value=(min_date, max_date))
 
