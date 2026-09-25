@@ -5,19 +5,19 @@ import requests
 import streamlit as st
 import zoneinfo
 
-# Configurazione della pagina (senza icona nel tab)
-icona_tab = ""  # Lasciato vuoto o pulito
+# Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS per il titolo colorato di verde e le card colorate
+# Stile CSS per ingrandire il titolo "La mia agenda" in verde e stilizzare le card
 st.markdown(
     """
     <style>
     .custom-title {
         color: #2e7d32;
-        font-size: 2.25rem;
-        font-weight: 700;
+        font-size: 3rem; /* Titolo molto più grande e visibile */
+        font-weight: 800;
         margin-bottom: 0px;
+        line-height: 1.2;
     }
     .event-card {
         padding: 12px;
@@ -54,7 +54,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Intestazione personalizzata con font verde
+# Intestazione ingrandita e colorata di verde
 st.markdown(
     '<p class="custom-title">La mia agenda</p>', unsafe_allow_html=True
 )
@@ -120,14 +120,28 @@ def analizza_dettagli_evento(titolo, descrizione, categoria_ical):
   testo_globale = f"{titolo} {descrizione} {categoria_ical}".lower()
 
   # Rilevamento Casa / Lavoro
-  if any(k in testo_globale for k in ["lavoro", "ufficio", "meeting", "call", "client", "riunione"]):
+  if any(
+      k in testo_globale
+      for k in [
+          "lavoro",
+          "ufficio",
+          "meeting",
+          "call",
+          "client",
+          "riunione",
+          "lavorare",
+      ]
+  ):
     categoria = "Lavoro"
-  elif any(k in testo_globale for k in ["casa", "famiglia", "spesa", "medico", "commissione", "relax"]):
+  elif any(
+      k in testo_globale
+      for k in ["casa", "famiglia", "spesa", "medico", "commissione", "relax"]
+  ):
     categoria = "Casa"
   else:
     categoria = "Generale"
 
-  # Rilevamento Priorità (es. se c'è [alta], [1], 'priorità', ecc.)
+  # Rilevamento Priorità
   if any(k in testo_globale for k in ["priorità alta", "[alta]", "urgente", "!"]):
     priorita = "Alta"
   else:
@@ -149,8 +163,7 @@ def carica_eventi(url):
         titolo = str(componente.get("summary", "Senza titolo"))
         luogo = str(componente.get("location", ""))
         descrizione = str(componente.get("description", ""))
-        
-        # Estrazione categorie native se presenti in iCloud
+
         cat_raw = componente.get("categories", "")
         if hasattr(cat_raw, "to_ical"):
           cat_str = cat_raw.to_ical().decode("utf-8")
@@ -171,8 +184,9 @@ def carica_eventi(url):
           data_obj = None
           data_str_ita = "Data non definita"
 
-        # Analisi automatica di categoria e priorità
-        categoria, priorita = analizza_dettagli_evento(titolo, descrizione, cat_str)
+        categoria, priorita = analizza_dettagli_evento(
+            titolo, descrizione, cat_str
+        )
 
         eventi.append({
             "Titolo": titolo,
@@ -186,6 +200,7 @@ def carica_eventi(url):
 
     df = pd.DataFrame(eventi)
     if not df.empty:
+      # Ordinamento cronologico generale
       df = df.sort_values(by="DataInizio", na_position="last").reset_index(
           drop=True
       )
@@ -223,9 +238,21 @@ if not df.empty:
     for _, row in eventi_oggi.iterrows():
       luogo_txt = f"📍 {row['Luogo']}" if row["Luogo"] else ""
       desc_txt = f"📝 {row['Descrizione']}" if row["Descrizione"] else ""
-      
-      badge_cat = f'<span class="badge-lavoro">Lavoro</span>' if row["Categoria"] == "Lavoro" else (f'<span class="badge-casa">Casa</span>' if row["Categoria"] == "Casa" else "")
-      badge_pri = f'<span class="badge-priorita">⚠️ Priorità Alta</span>' if row["Priorità"] == "Alta" else ""
+
+      badge_cat = (
+          '<span class="badge-lavoro">Lavoro</span>'
+          if row["Categoria"] == "Lavoro"
+          else (
+              '<span class="badge-casa">Casa</span>'
+              if row["Categoria"] == "Casa"
+              else ""
+          )
+      )
+      badge_pri = (
+          '<span class="badge-priorita">⚠️ Priorità Alta</span>'
+          if row["Priorità"] == "Alta"
+          else ""
+      )
 
       with st.container(border=True):
         col_t, col_b = st.columns([3, 1])
@@ -241,18 +268,22 @@ if not df.empty:
           st.caption(desc_txt)
     st.markdown("---")
 
-  # --- SEZIONE 3: GRIGLIA EVENTI CON FILTRO MESE CAMBIABILE ---
+  # --- SEZIONE 3: GRIGLIA EVENTI CON FILTRO MESE CAMBIABILE ED ORDINAMENTO CRONOLOGICO ---
   st.subheader("🗓️ Appuntamenti per Mese")
 
-  # Creiamo una lista di mesi disponibili nel calendario per popolare il selettore
   df_con_date = df.dropna(subset=["DataInizio"]).copy()
   if not df_con_date.empty:
-    df_con_date["MeseAnno"] = df_con_date["DataInizio"].apply(lambda x: x.strftime("%Y-%m"))
+    df_con_date["MeseAnno"] = df_con_date["DataInizio"].apply(
+        lambda x: x.strftime("%Y-%m")
+    )
     mesi_disponibili = sorted(df_con_date["MeseAnno"].unique())
-    
-    # Mese corrente in formato stringa per impostarlo come default se presente
+
     mese_corrente_str = oggi.strftime("%Y-%m")
-    default_index = mesi_disponibili.index(mese_corrente_str) if mese_corrente_str in mesi_disponibili else 0
+    default_index = (
+        mesi_disponibili.index(mese_corrente_str)
+        if mese_corrente_str in mesi_disponibili
+        else 0
+    )
 
     col_filtro_m, _ = st.columns([2, 2])
     with col_filtro_m:
@@ -260,11 +291,14 @@ if not df.empty:
           "Seleziona Mese:",
           mesi_disponibili,
           index=default_index,
-          format_func=lambda x: datetime.strptime(x, "%Y-%m").strftime("%B %Y").capitalize()
+          format_func=lambda x: datetime.strptime(x, "%Y-%m")
+          .strftime("%B %Y")
+          .capitalize(),
       )
 
     anno_s, mese_s = map(int, mese_scelto.split("-"))
 
+    # Filtriamo e ordiniamo rigorosamente in ordine cronologico crescente
     eventi_mese = df[
         df["DataInizio"].apply(
             lambda x: (
@@ -273,7 +307,7 @@ if not df.empty:
                 else False
             )
         )
-    ]
+    ].sort_values(by="DataInizio", ascending=True)
 
     if not eventi_mese.empty:
       num_colonne = 3
@@ -291,9 +325,21 @@ if not df.empty:
       for idx, (_, row) in enumerate(eventi_mese.iterrows()):
         col_corrente = colonne[idx % num_colonne]
         colore_corrente = colori_sfondo[idx % len(colori_sfondo)]
-        
-        badge_cat = f'<span class="badge-lavoro">Lavoro</span>' if row["Categoria"] == "Lavoro" else (f'<span class="badge-casa">Casa</span>' if row["Categoria"] == "Casa" else "")
-        badge_pri = f'<span class="badge-priorita">⚠️ Alta</span>' if row["Priorità"] == "Alta" else ""
+
+        badge_cat = (
+            '<span class="badge-lavoro">Lavoro</span>'
+            if row["Categoria"] == "Lavoro"
+            else (
+                '<span class="badge-casa">Casa</span>'
+                if row["Categoria"] == "Casa"
+                else ""
+            )
+        )
+        badge_pri = (
+            '<span class="badge-priorita">⚠️ Alta</span>'
+            if row["Priorità"] == "Alta"
+            else ""
+        )
 
         with col_corrente:
           luogo_str = f"📍 {row['Luogo']}" if row["Luogo"] else ""
@@ -321,7 +367,9 @@ if not df.empty:
     with c1:
       ricerca = st.text_input("Cerca parola chiave:")
     with c2:
-      filtro_categoria = st.selectbox("Categoria:", ["Tutte", "Casa", "Lavoro", "Generale"])
+      filtro_categoria = st.selectbox(
+          "Categoria:", ["Tutte", "Casa", "Lavoro", "Generale"]
+      )
     with c3:
       periodo = st.selectbox(
           "Periodo:", ["Solo Futuri", "Tutti", "Solo Passati"]
@@ -359,7 +407,7 @@ if not df.empty:
           df_f["DataInizio"].apply(lambda x: x < oggi if pd.notna(x) else False)
       ]
 
-    if isinstance(intervallo_date, tuple) and len(intervallo_date == 2):
+    if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
       data_inizio_scelta, data_fine_scelta = intervallo_date
       df_f = df_f[
           df_f["DataInizio"].apply(
@@ -371,7 +419,9 @@ if not df.empty:
 
     st.subheader(f"Risultati ({len(df_f)})")
     st.dataframe(
-        df_f[["Titolo", "Inizio", "Categoria", "Priorità", "Luogo", "Descrizione"]],
+        df_f[
+            ["Titolo", "Inizio", "Categoria", "Priorità", "Luogo", "Descrizione"]
+        ],
         use_container_width=True,
     )
 
