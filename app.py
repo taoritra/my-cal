@@ -117,8 +117,9 @@ with st.spinner("Sincronizzazione della dashboard in corso..."):
 if not df.empty:
   oggi = date.today()
 
-  eventi_oggi = df[df["DataInizio"] == oggi]
-  eventi_futuri = df[df["DataInizio"] >= oggi]
+  # CONFRONTO ROBUSTO: verifichiamo solo anno, mese e giorno
+  eventi_oggi = df[df["DataInizio"].apply(lambda x: x == oggi if pd.notna(x) else False)]
+  eventi_futuri = df[df["DataInizio"].apply(lambda x: x >= oggi if pd.notna(x) else False)]
 
   # --- SEZIONE 1: KPI STATISTICHE ---
   col_m1, col_m2, col_m3 = st.columns(3)
@@ -133,21 +134,24 @@ if not df.empty:
 
   # --- SEZIONE 2: ANTEPRIMA EVENTI DI OGGI ---
   if not eventi_oggi.empty:
-    st.subheader("🔔 Impegni di Oggi")
+    st.subheader("🔔 Impegni di Oggi in Dettaglio")
     for _, row in eventi_oggi.iterrows():
-      luogo_txt = f"📍 *{row['Luogo']}*" if row["Luogo"] else ""
-      st.success(
-          f"**{row['Titolo']}** — 🕒 {row['Inizio']}  \n{luogo_txt}"
-          f"  \n_{row['Descrizione']}_"
-          if row["Descrizione"]
-          else f"**{row['Titolo']}** — 🕒 {row['Inizio']}  \n{luogo_txt}"
-      )
+      luogo_txt = f"📍 **Luogo:** {row['Luogo']}" if row["Luogo"] else ""
+      desc_txt = f"📝 **Note:** {row['Descrizione']}" if row["Descrizione"] else ""
+      
+      # Creiamo un box pulito ed elegante per ogni evento di oggi
+      with st.container(border=True):
+        st.markdown(f"### 📌 {row['Titolo']}")
+        st.write(f"🕒 **Quando:** {row['Inizio']}")
+        if luogo_txt:
+          st.write(luogo_txt)
+        if desc_txt:
+          st.write(desc_txt)
     st.divider()
 
   # --- SEZIONE 3: ANTEPRIMA PROSSIMI APPUNTAMENTI ---
   st.subheader("⚡ I prossimi appuntamenti in arrivo")
-  # Escludiamo quelli di oggi per mostrare proprio il futuro prossimo
-  prossimi_futuri = eventi_futuri[eventi_futuri["DataInizio"] > oggi].head(3)
+  prossimi_futuri = df[df["DataInizio"].apply(lambda x: x > oggi if pd.notna(x) else False)].head(3)
 
   if not prossimi_futuri.empty:
     cols_prev = st.columns(len(prossimi_futuri))
@@ -193,15 +197,14 @@ if not df.empty:
     df_f = df_f[df_f["Titolo"].str.contains(ricerca, case=False, na=False)]
 
   if periodo == "Solo Futuri":
-    df_f = df_f[df_f["DataInizio"] >= oggi]
+    df_f = df_f[df_f["DataInizio"].apply(lambda x: x >= oggi if pd.notna(x) else False)]
   elif periodo == "Solo Passati":
-    df_f = df_f[df_f["DataInizio"] < oggi]
+    df_f = df_f[df_f["DataInizio"].apply(lambda x: x < oggi if pd.notna(x) else False)]
 
   if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
     data_inizio_scelta, data_fine_scelta = intervallo_date
     df_f = df_f[
-        (df_f["DataInizio"] >= data_inizio_scelta)
-        & (df_f["DataInizio"] <= data_fine_scelta)
+        df_f["DataInizio"].apply(lambda x: (data_inizio_scelta <= x <= data_fine_scelta) if pd.notna(x) else False)
     ]
 
   st.divider()
