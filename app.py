@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS pulito e senza forzature che rompono lo scroll
+# Stile CSS per compattare gli spazi tra le card
 st.markdown(
     """
     <style>
@@ -19,10 +19,15 @@ st.markdown(
     }
 
     .block-container {
-        padding-top: 1.2rem !important;
+        padding-top: 1.0rem !important;
         padding-bottom: 1.0rem !important;
         padding-left: 0.8rem !important;
         padding-right: 0.8rem !important;
+    }
+
+    /* Riduciamo lo spazio verticale generale tra gli elementi di Streamlit */
+    div.stVerticalBlock > div {
+        gap: 0.2rem !important;
     }
 
     /* Titolo principale */
@@ -35,20 +40,20 @@ st.markdown(
         letter-spacing: -0.5px;
     }
 
-    /* Stile checkbox integrata */
+    /* Stile checkbox ravvicinata e compatta */
     [data-testid="stCheckbox"] {
-        padding: 4px 8px 8px 8px !important;
-        border-bottom-left-radius: 10px;
-        border-bottom-right-radius: 10px;
-        margin-top: -10px !important;
-        margin-bottom: 12px !important;
+        padding: 2px 8px 4px 8px !important;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        margin-top: -6px !important;
+        margin-bottom: 6px !important; /* Riduce lo spazio vuoto sotto ogni card */
         border-left: 1px solid rgba(0,0,0,0.08);
         border-right: 1px solid rgba(0,0,0,0.08);
         border-bottom: 1px solid rgba(0,0,0,0.08);
     }
     
     [data-testid="stCheckbox"] label {
-        font-size: 0.75rem !important;
+        font-size: 0.7rem !important;
         font-weight: 700 !important;
         color: #2c3e50 !important;
     }
@@ -151,7 +156,7 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- RENDERIZZAZIONE SINGOLA CARD ---
+# --- RENDERIZZAZIONE SINGOLA CARD COMPATTA ---
 def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     uid = item["UID"]
     
@@ -161,17 +166,17 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     is_completato = uid in st.session_state.completati
     stile_opacita = "opacity: 0.4; text-decoration: line-through;" if is_completato else ""
 
-    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
-    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; margin-left: 5px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
+    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
+    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; margin-left: 4px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
     luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
 
-    # Parte superiore della card
+    # Parte superiore della card (più compatta)
     st.markdown(
         f"""
-        <div style="background-color: {colore_sfondo}; border-top-left-radius: 10px; border-top-right-radius: 10px; padding: 12px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); box-shadow: 0 2px 4px rgba(0,0,0,0.02); {stile_opacita}">
-            <div style="font-size: 0.95rem; font-weight: 800; color: #2c3e50; line-height: 1.2; margin-bottom: 4px;">{item["Titolo"]}</div>
-            <div style="font-size: 0.75rem; font-weight: 600; color: #444; margin-bottom: 2px;">🕒 {item["Inizio"]}</div>
-            <div style="font-size: 0.7rem; color: #666; margin-bottom: 6px;">{luogo_str}</div>
+        <div style="background-color: {colore_sfondo}; border-top-left-radius: 8px; border-top-right-radius: 8px; padding: 8px 10px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); {stile_opacita}">
+            <div style="font-size: 0.9rem; font-weight: 800; color: #2c3e50; line-height: 1.2; margin-bottom: 2px;">{item["Titolo"]}</div>
+            <div style="font-size: 0.7rem; font-weight: 600; color: #444; margin-bottom: 2px;">🕒 {item["Inizio"]}</div>
+            <div style="font-size: 0.65rem; color: #666; margin-bottom: 4px;">{luogo_str}</div>
             <div>{badge_cat} {badge_pri}</div>
         </div>
         """,
@@ -190,12 +195,10 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
         st.session_state.completati.remove(uid)
         st.rerun()
 
-# --- GRIGLIA RESPONSIVE INTELLIGENTE ---
-def renderizza_griglia_card(df_eventi, chiave_prefisso):
+def renderizza_lista_card(df_eventi, chiave_prefisso):
     colori_pastello = ["#fdf2e9", "#e8f8f5", "#ebf5fb", "#f4ecf7", "#fef9e7", "#f2f4f4"]
     lista_eventi = df_eventi.to_dict('records')
 
-    # Su smartphone usa 1 colonna fluida senza scroll, su schermo largo usa 2 colonne
     for i, item in enumerate(lista_eventi):
         renderizza_singola_card(item, i, chiave_prefisso, colori_pastello[i % len(colori_pastello)])
 
@@ -213,15 +216,15 @@ if not df.empty:
 
     # 1. SOMMARIO COMPATTO
     st.markdown(f"📌 **Oggi:** `{len(eventi_oggi)}` &nbsp;|&nbsp; 🚀 **Futuri:** `{len(eventi_futuri)}` &nbsp;|&nbsp; 📅 **Totali:** `{len(df)}`")
-    st.markdown('<hr style="margin: 0.3rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
+    st.markdown('<hr style="margin: 0.2rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
 
     # 2. IMPEGNI DI OGGI
     if not eventi_oggi.empty:
         st.subheader("🔔 Impegni di Oggi")
-        renderizza_griglia_card(eventi_oggi, "oggi")
-        st.markdown('<hr style="margin: 0.3rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
+        renderizza_lista_card(eventi_oggi, "oggi")
+        st.markdown('<hr style="margin: 0.2rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
 
-    # 3. GRIGLIA EVENTI PER MESE
+    # 3. EVENTI PER MESE
     st.subheader("🗓️ Appuntamenti per Mese")
     df_con_date = df.dropna(subset=["DataInizio"]).copy()
     
@@ -240,13 +243,13 @@ if not df.empty:
         eventi_mese = df[df["DataInizio"].apply(lambda x: (x.year == anno_s and x.month == mese_s if pd.notna(x) else False))].sort_values(by="DataInizio", ascending=True)
 
         if not eventi_mese.empty:
-            renderizza_griglia_card(eventi_mese, "mese")
+            renderizza_lista_card(eventi_mese, "mese")
         else:
             st.info("Nessun evento in programma per il mese selezionato.")
     else:
         st.info("Nessuna data valida trovata nel calendario.")
 
-    st.markdown('<hr style="margin: 0.3rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
+    st.markdown('<hr style="margin: 0.2rem 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">', unsafe_allow_html=True)
 
     # 4. RICERCA E FILTRI
     with st.expander("🔍 Altri filtri e ricerca avanzata"):
@@ -273,7 +276,7 @@ if not df.empty:
         elif periodo == "Solo Passati":
             df_f = df_f[df_f["DataInizio"].apply(lambda x: x < oggi if pd.notna(x) else False)]
         
-        if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
+        if isinstance(intervallo_date, tuple) and len(intervallo_date) ==2:
             df_f = df_f[df_f["DataInizio"].apply(lambda x: (intervallo_date[0] <= x <= intervallo_date[1]) if pd.notna(x) else False)]
 
         df_f["Completato"] = df_f["UID"].apply(lambda x: "✅" if x in st.session_state.completati else "❌")
