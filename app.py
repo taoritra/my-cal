@@ -45,7 +45,7 @@ st.markdown(
         }
     }
 
-    /* GRIGLIA CSS FORZATA A 2 COLONNE (Funziona anche su smartphone!) */
+    /* GRIGLIA CSS FORZATA A 2 COLONNE (Funziona anche su smartphone) */
     .cards-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -55,7 +55,7 @@ st.markdown(
 
     @media (max-width: 400px) {
         .cards-grid {
-            grid-template-columns: repeat(2, 1fr); /* Mantiene 2 colonne anche su schermi strettissimi */
+            grid-template-columns: repeat(2, 1fr);
             gap: 6px;
         }
     }
@@ -100,12 +100,6 @@ st.markdown(
         font-weight: 600;
     }
     
-    /* Riduce i margini dei widget Streamlit all'interno delle card */
-    .stCheckbox {
-        font-size: 0.75rem !important;
-        margin-top: -5px !important;
-    }
-    
     /* Minimizza lo spazio nei container generali */
     [data-testid="stVerticalBlock"] {
         gap: 0.4rem !important;
@@ -119,11 +113,11 @@ st.markdown(
 st.markdown('<h1 class="custom-title">La mia agenda</h1>', unsafe_allow_html=True)
 st.caption("Sincronizzato in tempo reale (Fuso orario: Roma)")
 
-# Recupero link iCloud
-try:
-    URL_ICLOUD = st.secrets["URL_ICLOUD"]
-except Exception:
-    st.error("❌ Attenzione: il link iCloud non è configurato nei Secrets di Streamlit.")
+# Recupero link iCloud sicuro
+if "URL_ICLOUD" in st.secrets:
+    URL_CALENDARIO = st.secrets["URL_ICLOUD"]
+else:
+    st.error("❌ Attenzione: il link iCloud non è configurato nei Secrets di Streamlit (`URL_ICLOUD`).")
     st.stop()
 
 # Funzioni di utilità
@@ -208,7 +202,7 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE REALI ---
+# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE ---
 def renderizza_griglia_card(df_eventi, chiave_prefisso):
     colori_sfondo = [
         "rgba(255, 223, 186, 0.4)", "rgba(186, 225, 255, 0.4)", 
@@ -216,7 +210,6 @@ def renderizza_griglia_card(df_eventi, chiave_prefisso):
         "rgba(230, 218, 255, 0.4)", "rgba(255, 255, 186, 0.4)"
     ]
 
-    # Inizia il contenitore della griglia CSS
     html_content = '<div class="cards-grid">'
 
     for idx, (_, row) in enumerate(df_eventi.iterrows()):
@@ -229,7 +222,6 @@ def renderizza_griglia_card(df_eventi, chiave_prefisso):
         classe_card = "event-card event-completato" if is_completato else "event-card"
         luogo_str = f"📍 {row['Luogo']}" if row["Luogo"] else ""
 
-        # Generiamo l'HTML interno della card
         html_content += f"""
         <div class="{classe_card}" style="background-color: {colore_corrente};">
             <div>
@@ -244,22 +236,14 @@ def renderizza_griglia_card(df_eventi, chiave_prefisso):
         """
 
     html_content += '</div>'
-    
-    # Mostriamo la griglia di card HTML a schermo intero
     st.markdown(html_content, unsafe_allow_html=True)
 
-    # Sotto la griglia inseriamo i checkbox in modo pulito per la gestione dello stato
     st.markdown("<div style='font-size: 0.75rem; color: #666; margin-top: 4px;'>Spunta gli impegni completati:</div>", unsafe_allow_html=True)
     
-    # Mostriamo i checkbox in orizzontale o a blocchi compatti per spuntare gli eventi
-    cols_chk = st.columns(min(len(df_eventi), 4)) if len(df_eventi) > 0 else []
     for idx, (_, row) in enumerate(df_eventi.iterrows()):
         uid = row["UID"]
         is_completato = uid in st.session_state.completati
-        # Usiamo un selettore modulare per affiancare i checkbox in modo compatto
-        c_idx = idx % 2 # Dividiamo su 2 colonne logiche di checkbox
-        # Per semplicità e pulizia visiva, li incolonniamo in modo ordinato sotto
-        nuovo_stato = st.checkbox(f"Fatto: {row['Titolo'][:15]}...", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{uid}")
+        nuovo_stato = st.checkbox(f"Fatto: {row['Titolo'][:20]}...", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{uid}")
         if nuovo_stato and uid not in st.session_state.completati:
             st.session_state.completati.add(uid)
             st.rerun()
@@ -327,7 +311,7 @@ if not df.empty:
             periodo = st.selectbox("Periodo:", ["Solo Futuri", "Tutti", "Solo Passati"])
 
         min_date = df["DataInizio"].min() if not pd.isna(df["DataInizio"].min()) else oggi
-        max_date = df["DataInizio"].max() if not pd.isna(df["DataInzoic"].max() if "DataInzoic" in df else df["DataInizio"].max()) else oggi
+        max_date = df["DataInizio"].max() if not pd.isna(df["DataInizio"].max()) else oggi
 
         intervallo_date = st.date_input("Intervallo:", value=(min_date, max_date))
 
