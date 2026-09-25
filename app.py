@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS per compattare gli spazi tra le card
+# Stile CSS ultra-compatto per azzerare gli spazi vuoti
 st.markdown(
     """
     <style>
@@ -19,43 +19,54 @@ st.markdown(
     }
 
     .block-container {
-        padding-top: 1.0rem !important;
-        padding-bottom: 1.0rem !important;
-        padding-left: 0.8rem !important;
-        padding-right: 0.8rem !important;
+        padding-top: 0.8rem !important;
+        padding-bottom: 0.8rem !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
     }
 
-    /* Riduciamo lo spazio verticale generale tra gli elementi di Streamlit */
-    div.stVerticalBlock > div {
-        gap: 0.2rem !important;
+    /* Annulla i margini verticali di default di Streamlit tra gli elementi */
+    div.stVerticalBlock {
+        gap: 0rem !important;
+    }
+    
+    div.element-container {
+        margin-bottom: 0px !important;
     }
 
     /* Titolo principale */
     h1.custom-title {
         color: #1b5e20 !important;
-        font-size: 1.5rem !important;
+        font-size: 1.3rem !important;
         font-weight: 900 !important;
         margin-top: 0px !important;
         margin-bottom: 0px !important;
         letter-spacing: -0.5px;
     }
 
-    /* Stile checkbox ravvicinata e compatta */
+    /* Stile checkbox ultra-compatta attaccata alla card */
     [data-testid="stCheckbox"] {
-        padding: 2px 8px 4px 8px !important;
-        border-bottom-left-radius: 8px;
-        border-bottom-right-radius: 8px;
-        margin-top: -6px !important;
-        margin-bottom: 6px !important; /* Riduce lo spazio vuoto sotto ogni card */
+        padding: 0px 6px 3px 6px !important;
+        border-bottom-left-radius: 6px;
+        border-bottom-right-radius: 6px;
+        margin-top: -4px !important;
+        margin-bottom: 3px !important; /* Spazio minimo vitale tra una card e l'altra */
         border-left: 1px solid rgba(0,0,0,0.08);
         border-right: 1px solid rgba(0,0,0,0.08);
         border-bottom: 1px solid rgba(0,0,0,0.08);
     }
     
     [data-testid="stCheckbox"] label {
-        font-size: 0.7rem !important;
+        font-size: 0.65rem !important;
         font-weight: 700 !important;
         color: #2c3e50 !important;
+    }
+    
+    /* Riduce lo spazio dei sottotitoli e dei separatori */
+    h2, h3 {
+        padding-top: 0.4rem !important;
+        padding-bottom: 0.2rem !important;
+        font-size: 1.1rem !important;
     }
     </style>
 """,
@@ -156,7 +167,7 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- RENDERIZZAZIONE SINGOLA CARD COMPATTA ---
+# --- RENDERIZZAZIONE SINGOLA CARD SUPER COMPATTA ---
 def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     uid = item["UID"]
     
@@ -166,17 +177,17 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     is_completato = uid in st.session_state.completati
     stile_opacita = "opacity: 0.4; text-decoration: line-through;" if is_completato else ""
 
-    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
-    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; margin-left: 4px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
+    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 1px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 1px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
+    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 1px 4px; border-radius: 3px; font-size: 0.6rem; font-weight: 700; margin-left: 3px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
     luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
 
-    # Parte superiore della card (più compatta)
+    # Parte superiore della card ridotta al minimo indispensabile
     st.markdown(
         f"""
-        <div style="background-color: {colore_sfondo}; border-top-left-radius: 8px; border-top-right-radius: 8px; padding: 8px 10px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); {stile_opacita}">
-            <div style="font-size: 0.9rem; font-weight: 800; color: #2c3e50; line-height: 1.2; margin-bottom: 2px;">{item["Titolo"]}</div>
-            <div style="font-size: 0.7rem; font-weight: 600; color: #444; margin-bottom: 2px;">🕒 {item["Inizio"]}</div>
-            <div style="font-size: 0.65rem; color: #666; margin-bottom: 4px;">{luogo_str}</div>
+        <div style="background-color: {colore_sfondo}; border-top-left-radius: 6px; border-top-right-radius: 6px; padding: 6px 8px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); {stile_opacita}">
+            <div style="font-size: 0.85rem; font-weight: 800; color: #2c3e50; line-height: 1.1; margin-bottom: 2px;">{item["Titolo"]}</div>
+            <div style="font-size: 0.65rem; font-weight: 600; color: #444; margin-bottom: 1px;">🕒 {item["Inizio"]}</div>
+            <div style="font-size: 0.6rem; color: #666; margin-bottom: 3px;">{luogo_str}</div>
             <div>{badge_cat} {badge_pri}</div>
         </div>
         """,
@@ -276,7 +287,7 @@ if not df.empty:
         elif periodo == "Solo Passati":
             df_f = df_f[df_f["DataInizio"].apply(lambda x: x < oggi if pd.notna(x) else False)]
         
-        if isinstance(intervallo_date, tuple) and len(intervallo_date) ==2:
+        if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
             df_f = df_f[df_f["DataInizio"].apply(lambda x: (intervallo_date[0] <= x <= intervallo_date[1]) if pd.notna(x) else False)]
 
         df_f["Completato"] = df_f["UID"].apply(lambda x: "✅" if x in st.session_state.completati else "❌")
