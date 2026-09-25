@@ -3,6 +3,7 @@ from icalendar import Calendar
 import pandas as pd
 import requests
 import streamlit as st
+import zoneinfo  # Utile per gestire i fusi orari corretti
 
 # Configurazione della pagina
 st.set_page_config(
@@ -21,6 +22,15 @@ except Exception:
       " Streamlit."
   )
   st.stop()
+
+
+# Funzione per ottenere la data odierna esatta in Italia (Fuso orario di Roma)
+def get_oggi_italia():
+  try:
+    roma_tz = zoneinfo.ZoneInfo("Europe/Rome")
+    return datetime.now(roma_tz).date()
+  except Exception:
+    return date.today()
 
 
 # Funzione di supporto per formattare la data in italiano
@@ -115,11 +125,15 @@ with st.spinner("Sincronizzazione della dashboard in corso..."):
   df = carica_eventi(URL_CALENDARIO)
 
 if not df.empty:
-  oggi = date.today()
+  oggi = get_oggi_italia()
 
-  # CONFRONTO ROBUSTO: verifichiamo solo anno, mese e giorno
-  eventi_oggi = df[df["DataInizio"].apply(lambda x: x == oggi if pd.notna(x) else False)]
-  eventi_futuri = df[df["DataInizio"].apply(lambda x: x >= oggi if pd.notna(x) else False)]
+  # Filtri basati sulla data italiana corretta
+  eventi_oggi = df[
+      df["DataInizio"].apply(lambda x: x == oggi if pd.notna(x) else False)
+  ]
+  eventi_futuri = df[
+      df["DataInizio"].apply(lambda x: x >= oggi if pd.notna(x) else False)
+  ]
 
   # --- SEZIONE 1: KPI STATISTICHE ---
   col_m1, col_m2, col_m3 = st.columns(3)
@@ -138,8 +152,7 @@ if not df.empty:
     for _, row in eventi_oggi.iterrows():
       luogo_txt = f"📍 **Luogo:** {row['Luogo']}" if row["Luogo"] else ""
       desc_txt = f"📝 **Note:** {row['Descrizione']}" if row["Descrizione"] else ""
-      
-      # Creiamo un box pulito ed elegante per ogni evento di oggi
+
       with st.container(border=True):
         st.markdown(f"### 📌 {row['Titolo']}")
         st.write(f"🕒 **Quando:** {row['Inizio']}")
@@ -151,7 +164,9 @@ if not df.empty:
 
   # --- SEZIONE 3: ANTEPRIMA PROSSIMI APPUNTAMENTI ---
   st.subheader("⚡ I prossimi appuntamenti in arrivo")
-  prossimi_futuri = df[df["DataInizio"].apply(lambda x: x > oggi if pd.notna(x) else False)].head(3)
+  prossimi_futuri = df[
+      df["DataInizio"].apply(lambda x: x > oggi if pd.notna(x) else False)
+  ].head(3)
 
   if not prossimi_futuri.empty:
     cols_prev = st.columns(len(prossimi_futuri))
@@ -197,14 +212,22 @@ if not df.empty:
     df_f = df_f[df_f["Titolo"].str.contains(ricerca, case=False, na=False)]
 
   if periodo == "Solo Futuri":
-    df_f = df_f[df_f["DataInizio"].apply(lambda x: x >= oggi if pd.notna(x) else False)]
+    df_f = df_f[
+        df_f["DataInizio"].apply(lambda x: x >= oggi if pd.notna(x) else False)
+    ]
   elif periodo == "Solo Passati":
-    df_f = df_f[df_f["DataInizio"].apply(lambda x: x < oggi if pd.notna(x) else False)]
+    df_f = df_f[
+        df_f["DataInizio"].apply(lambda x: x < oggi if pd.notna(x) else False)
+    ]
 
   if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
     data_inizio_scelta, data_fine_scelta = intervallo_date
     df_f = df_f[
-        df_f["DataInizio"].apply(lambda x: (data_inizio_scelta <= x <= data_fine_scelta) if pd.notna(x) else False)
+        df_f["DataInizio"].apply(
+            lambda x: (data_inizio_scelta <= x <= data_fine_scelta)
+            if pd.notna(x)
+            else False
+        )
     ]
 
   st.divider()
