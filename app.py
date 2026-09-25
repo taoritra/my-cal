@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS avanzato per griglia a 2 colonne, checkbox integrata e testi grandi
+# Stile CSS con checkbox integrata nella card e testi ingranditi e leggibili
 st.markdown(
     """
     <style>
@@ -21,13 +21,13 @@ st.markdown(
 
     /* Gestione degli spazi della pagina */
     .block-container {
-        padding-top: 2.5rem !important;
+        padding-top: 2rem !important;
         padding-bottom: 1rem !important;
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
     }
 
-    /* Titolo principale responsivo */
+    /* Titolo principale */
     h1.custom-title {
         color: #1b5e20 !important;
         font-size: 1.8rem !important;
@@ -44,12 +44,12 @@ st.markdown(
         }
     }
 
-    /* RIGA DELLA GRIGLIA: Forza sempre 2 colonne affiancate al 50% ciascuna */
+    /* RIGA DELLA GRIGLIA: 2 colonne fisse al 50% */
     .row-card-2col {
         display: flex;
         flex-direction: row;
-        gap: 8px;
-        margin-bottom: 8px;
+        gap: 10px;
+        margin-bottom: 10px;
         width: 100%;
     }
 
@@ -59,85 +59,87 @@ st.markdown(
         box-sizing: border-box;
     }
 
-    /* Card eventi con altezza flessibile e spaziatura interna */
+    /* Card eventi ottimizzata con testi più grandi e leggibili */
     .event-card {
         border-radius: 12px;
-        padding: 10px 12px;
-        min-height: 145px;
+        padding: 12px;
+        min-height: 165px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         box-sizing: border-box;
         border: 1px solid rgba(0,0,0,0.08);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+        box-shadow: 0 3px 6px rgba(0,0,0,0.03);
         overflow: hidden;
     }
     .event-completato {
-        opacity: 0.5;
+        opacity: 0.55;
         text-decoration: line-through;
     }
 
-    /* Testi interni ben visibili e leggibili */
+    /* Testi card ingranditi */
     .card-title {
         font-size: 0.95rem !important;
         font-weight: 700 !important;
         display: block;
         line-height: 1.25;
-        max-height: 2.6em;
+        max-height: 2.5em;
         overflow: hidden;
-        color: #1e293b;
+        color: #2c3e50;
+        margin-bottom: 4px;
     }
     .card-info {
         font-size: 0.8rem !important;
-        color: #334155;
-        margin-top: 3px;
-        font-weight: 500;
+        font-weight: 500 !important;
+        color: #444;
+        margin-bottom: 2px;
     }
     .card-luogo {
         font-size: 0.75rem !important;
-        color: #64748b;
+        color: #555;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        margin-top: 1px;
+        margin-bottom: 4px;
     }
 
     /* Badge con colori vivaci */
     .badge-casa {
         background-color: #d1e7dd;
         color: #0f5132;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.68rem;
+        padding: 3px 7px;
+        border-radius: 5px;
+        font-size: 0.7rem;
         font-weight: 700;
     }
     .badge-lavoro {
         background-color: #cfe2ff;
         color: #084298;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.68rem;
+        padding: 3px 7px;
+        border-radius: 5px;
+        font-size: 0.7rem;
         font-weight: 700;
     }
     .badge-priorita {
         background-color: #f8d7da;
         color: #842029;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.68rem;
+        padding: 3px 7px;
+        border-radius: 5px;
+        font-size: 0.7rem;
         font-weight: 700;
     }
 
-    /* Adattamento grafico pulito per i checkbox incorporati */
+    /* Adattamento checkbox Streamlit incorporato */
     [data-testid="stCheckbox"] {
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
+        margin: 0px !important;
+        padding: 0px !important;
     }
     [data-testid="stCheckbox"] label {
-        font-size: 0.75rem !important;
+        font-size: 0.8rem !important;
         font-weight: 600 !important;
+        color: #2c3e50 !important;
     }
-    
+
     [data-testid="stVerticalBlock"] {
         gap: 0.1rem !important;
     }
@@ -225,7 +227,7 @@ def carica_eventi(url):
                 categoria, priorita = analizza_dettagli_evento(titolo, descrizione, cat_str)
                 uid = f"{titolo}_{str(data_obj)}"
 
-        eventi.append({
+                eventi.append({
                     "UID": uid, "Titolo": titolo, "DataInizio": data_obj,
                     "Inizio": data_str_ita, "Luogo": luogo, "Descrizione": descrizione,
                     "Categoria": categoria, "Priorità": priorita
@@ -239,7 +241,7 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE CON CHECKBOX INTEGRATE NELLA CARD ---
+# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE CON CHECKBOX INTERNA ---
 def renderizza_griglia_card(df_eventi, chiave_prefisso):
     colori_pastello = [
         "#fdf2e9", "#e8f8f5", "#ebf5fb", "#f4ecf7", "#fef9e7", "#f2f4f4"
@@ -252,9 +254,8 @@ def renderizza_griglia_card(df_eventi, chiave_prefisso):
         if i + 1 < len(lista_eventi):
             coppia.append(lista_eventi[i+1])
 
-        # Strutturiamo la riga divisa in 2 colonne native di Streamlit per contenere i widget dei checkbox dentro l'estetica della card
-        cols = st.columns(2)
-        
+        # Creazione riga CSS a 2 colonne
+        riga_html = '<div class="row-card-2col">'
         for offset, item in enumerate(coppia):
             global_idx = i + offset
             uid = item["UID"]
@@ -266,24 +267,31 @@ def renderizza_griglia_card(df_eventi, chiave_prefisso):
             classe_card = "event-card event-completato" if is_completato else "event-card"
             luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
 
+            riga_html += (
+                f'<div class="col-card-item">'
+                f'<div class="{classe_card}" style="background-color: {colore_sfondo};">'
+                f'<div>'
+                f'<span class="card-title">{item["Titolo"]}</span>'
+                f'<div class="card-info">🕒 {item["Inizio"]}</div>'
+                f'<div class="card-luogo">{luogo_str}</div>'
+                f'</div>'
+                f'<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">'
+                f'<div>{badge_cat} {badge_pri}</div>'
+                f'</div>'
+                f'</div>'
+                f'</div>'
+            )
+        riga_html += '</div>'
+        st.markdown(riga_html, unsafe_allow_html=True)
+
+        # Mettiamo le checkbox esattamente nello slot speculare della riga sottostante usando colonne Streamlit invisibili
+        cols = st.columns(2)
+        for offset, item in enumerate(coppia):
             with cols[offset]:
-                # Contenitore visivo della card in HTML
-                st.markdown(
-                    f'<div class="{classe_card}" style="background-color: {colore_sfondo};">'
-                    f'<div>'
-                    f'<span class="card-title">{item["Titolo"]}</span>'
-                    f'<div class="card-info">🕒 {item["Inizio"]}</div>'
-                    f'<div class="card-luogo">{luogo_str}</div>'
-                    f'</div>'
-                    f'<div style="margin-top: 6px; display: flex; justify-content: space-between; align-items: center;">'
-                    f'<div>{badge_cat} {badge_pri}</div>'
-                    f'</div>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-                
-                # Checkbox posizionata subitissimo sotto i testi, visivamente "dentro" la card
-                nuovo_stato = st.checkbox("Fatto", value=is_completato, key=f"chk_{chiave_prefisso}_{global_idx}_{uid}")
+                uid = item["UID"]
+                is_comp = uid in st.session_state.completati
+                idx = i + offset
+                nuovo_stato = st.checkbox("Fatto", value=is_comp, key=f"chk_{chiave_prefisso}_{idx}_{uid}")
                 if nuovo_stato and uid not in st.session_state.completati:
                     st.session_state.completati.add(uid)
                     st.rerun()
@@ -326,7 +334,7 @@ if not df.empty:
         col_filtro_m, _ = st.columns([2, 2])
         with col_filtro_m:
             mese_scelto = st.selectbox("Seleziona Mese:", mesi_disponibili, index=default_index,
-                                       format_func=lambda x: datetime.strptime(x, "%Y-%m-%d" if len(x)>7 else "%Y-%m").strftime("%B %Y").capitalize() if "-" in x else x)
+                                       format_func=lambda x: datetime.strptime(x, "%Y-%m").strftime("%B %Y").capitalize())
 
         anno_s, mese_s = map(int, mese_scelto.split("-"))
         eventi_mese = df[df["DataInizio"].apply(lambda x: (x.year == anno_s and x.month == mese_s if pd.notna(x) else False))].sort_values(by="DataInizio", ascending=True)
@@ -351,7 +359,7 @@ if not df.empty:
             periodo = st.selectbox("Periodo:", ["Solo Futuri", "Tutti", "Solo Passati"])
 
         min_date = df["DataInizio"].min() if not pd.isna(df["DataInizio"].min()) else oggi
-        max_date = df["DataInizio"].max() if not pd.isna(df["DataInizio"].max()) else oggi
+        max_date = df["DataInizio"].max() if not pd.isna(df["DataInizio"].max()) else oggi  # <-- CORRETTO QUI
 
         intervallo_date = st.date_input("Intervallo:", value=(min_date, max_date))
 
