@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS con griglia forzata a 2 colonne reali e testi ottimizzati
+# Stile CSS avanzato per griglia a 2 colonne, checkbox integrata e testi grandi
 st.markdown(
     """
     <style>
@@ -48,8 +48,8 @@ st.markdown(
     .row-card-2col {
         display: flex;
         flex-direction: row;
-        gap: 10px;
-        margin-bottom: 10px;
+        gap: 8px;
+        margin-bottom: 8px;
         width: 100%;
     }
 
@@ -59,17 +59,17 @@ st.markdown(
         box-sizing: border-box;
     }
 
-    /* Card eventi con altezza flessibile e ottimizzata */
+    /* Card eventi con altezza flessibile e spaziatura interna */
     .event-card {
-        border-radius: 10px;
-        padding: 10px;
-        min-height: 155px;
+        border-radius: 12px;
+        padding: 10px 12px;
+        min-height: 145px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         box-sizing: border-box;
-        border: 1px solid rgba(0,0,0,0.06);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        border: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
         overflow: hidden;
     }
     .event-completato {
@@ -77,28 +77,29 @@ st.markdown(
         text-decoration: line-through;
     }
 
-    /* Testi all'interno della card ridimensionati per essere ben leggibili */
+    /* Testi interni ben visibili e leggibili */
     .card-title {
-        font-size: 0.8rem !important;
+        font-size: 0.95rem !important;
         font-weight: 700 !important;
         display: block;
-        line-height: 1.2;
-        max-height: 2.4em;
+        line-height: 1.25;
+        max-height: 2.6em;
         overflow: hidden;
-        color: #2c3e50;
-        margin-bottom: 3px;
+        color: #1e293b;
     }
     .card-info {
-        font-size: 0.68rem !important;
-        color: #555;
-        margin-bottom: 2px;
+        font-size: 0.8rem !important;
+        color: #334155;
+        margin-top: 3px;
+        font-weight: 500;
     }
     .card-luogo {
-        font-size: 0.65rem !important;
-        color: #666;
+        font-size: 0.75rem !important;
+        color: #64748b;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        margin-top: 1px;
     }
 
     /* Badge con colori vivaci */
@@ -107,7 +108,7 @@ st.markdown(
         color: #0f5132;
         padding: 2px 6px;
         border-radius: 4px;
-        font-size: 0.6rem;
+        font-size: 0.68rem;
         font-weight: 700;
     }
     .badge-lavoro {
@@ -115,7 +116,7 @@ st.markdown(
         color: #084298;
         padding: 2px 6px;
         border-radius: 4px;
-        font-size: 0.6rem;
+        font-size: 0.68rem;
         font-weight: 700;
     }
     .badge-priorita {
@@ -123,17 +124,18 @@ st.markdown(
         color: #842029;
         padding: 2px 6px;
         border-radius: 4px;
-        font-size: 0.6rem;
+        font-size: 0.68rem;
         font-weight: 700;
     }
 
-    /* Compattezza e pulizia per i checkbox Streamlit */
+    /* Adattamento grafico pulito per i checkbox incorporati */
     [data-testid="stCheckbox"] {
-        margin-top: -4px !important;
+        margin-top: 0px !important;
         margin-bottom: 0px !important;
     }
     [data-testid="stCheckbox"] label {
         font-size: 0.75rem !important;
+        font-weight: 600 !important;
     }
     
     [data-testid="stVerticalBlock"] {
@@ -223,7 +225,7 @@ def carica_eventi(url):
                 categoria, priorita = analizza_dettagli_evento(titolo, descrizione, cat_str)
                 uid = f"{titolo}_{str(data_obj)}"
 
-                eventi.append({
+        eventi.append({
                     "UID": uid, "Titolo": titolo, "DataInizio": data_obj,
                     "Inizio": data_str_ita, "Luogo": luogo, "Descrizione": descrizione,
                     "Categoria": categoria, "Priorità": priorita
@@ -237,7 +239,7 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE REALI ---
+# --- FUNZIONE PER RENDERIZZARE LA GRIGLIA A 2 COLONNE CON CHECKBOX INTEGRATE NELLA CARD ---
 def renderizza_griglia_card(df_eventi, chiave_prefisso):
     colori_pastello = [
         "#fdf2e9", "#e8f8f5", "#ebf5fb", "#f4ecf7", "#fef9e7", "#f2f4f4"
@@ -250,8 +252,9 @@ def renderizza_griglia_card(df_eventi, chiave_prefisso):
         if i + 1 < len(lista_eventi):
             coppia.append(lista_eventi[i+1])
 
-        # 1. Renderizziamo la riga HTML con le 2 card affiancate
-        riga_html = '<div class="row-card-2col">'
+        # Strutturiamo la riga divisa in 2 colonne native di Streamlit per contenere i widget dei checkbox dentro l'estetica della card
+        cols = st.columns(2)
+        
         for offset, item in enumerate(coppia):
             global_idx = i + offset
             uid = item["UID"]
@@ -263,29 +266,24 @@ def renderizza_griglia_card(df_eventi, chiave_prefisso):
             classe_card = "event-card event-completato" if is_completato else "event-card"
             luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
 
-            riga_html += (
-                f'<div class="col-card-item">'
-                f'<div class="{classe_card}" style="background-color: {colore_sfondo};">'
-                f'<div>'
-                f'<span class="card-title">{item["Titolo"]}</span>'
-                f'<div class="card-info">🕒 {item["Inizio"]}</div>'
-                f'<div class="card-luogo">{luogo_str}</div>'
-                f'</div>'
-                f'<div style="margin-top: 4px;">{badge_cat} {badge_pri}</div>'
-                f'</div>'
-                f'</div>'
-            )
-        riga_html += '</div>'
-        st.markdown(riga_html, unsafe_allow_html=True)
-
-        # 2. Sotto la riga grafica, posizioniamo i due checkbox in modo perfettamente sincronizzato
-        cols = st.columns(2)
-        for offset, item in enumerate(coppia):
             with cols[offset]:
-                uid = item["UID"]
-                is_comp = uid in st.session_state.completati
-                idx = i + offset
-                nuovo_stato = st.checkbox("Fatto", value=is_comp, key=f"chk_{chiave_prefisso}_{idx}_{uid}")
+                # Contenitore visivo della card in HTML
+                st.markdown(
+                    f'<div class="{classe_card}" style="background-color: {colore_sfondo};">'
+                    f'<div>'
+                    f'<span class="card-title">{item["Titolo"]}</span>'
+                    f'<div class="card-info">🕒 {item["Inizio"]}</div>'
+                    f'<div class="card-luogo">{luogo_str}</div>'
+                    f'</div>'
+                    f'<div style="margin-top: 6px; display: flex; justify-content: space-between; align-items: center;">'
+                    f'<div>{badge_cat} {badge_pri}</div>'
+                    f'</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+                
+                # Checkbox posizionata subitissimo sotto i testi, visivamente "dentro" la card
+                nuovo_stato = st.checkbox("Fatto", value=is_completato, key=f"chk_{chiave_prefisso}_{global_idx}_{uid}")
                 if nuovo_stato and uid not in st.session_state.completati:
                     st.session_state.completati.add(uid)
                     st.rerun()
@@ -328,7 +326,7 @@ if not df.empty:
         col_filtro_m, _ = st.columns([2, 2])
         with col_filtro_m:
             mese_scelto = st.selectbox("Seleziona Mese:", mesi_disponibili, index=default_index,
-                                       format_func=lambda x: datetime.strptime(x, "%Y-%m").strftime("%B %Y").capitalize())
+                                       format_func=lambda x: datetime.strptime(x, "%Y-%m-%d" if len(x)>7 else "%Y-%m").strftime("%B %Y").capitalize() if "-" in x else x)
 
         anno_s, mese_s = map(int, mese_scelto.split("-"))
         eventi_mese = df[df["DataInizio"].apply(lambda x: (x.year == anno_s and x.month == mese_s if pd.notna(x) else False))].sort_values(by="DataInizio", ascending=True)
