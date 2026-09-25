@@ -10,10 +10,7 @@ st.set_page_config(
 )
 
 st.title("📊 Dashboard Calendario iCloud")
-st.write(
-    "Panoramica completa, statistiche in tempo reale e ricerca avanzata dei tuoi"
-    " eventi."
-)
+st.write("Panoramica rapida e gestione intelligente dei tuoi impegni.")
 
 # Recupero sicuro del link iCloud dai Secrets
 try:
@@ -79,10 +76,11 @@ with st.spinner("Sincronizzazione della dashboard in corso..."):
 if not df.empty:
   oggi = date.today()
 
-  # --- SEZIONE 1: STATISTICHE / KPI DASHBOARD ---
+  # Filtri di base per statistiche
   eventi_oggi = df[df["DataInizio"] == oggi]
   eventi_futuri = df[df["DataInizio"] >= oggi]
 
+  # --- SEZIONE 1: KPI E ANTEPRIMA PROSSIMI EVENTI ---
   col_m1, col_m2, col_m3 = st.columns(3)
   with col_m1:
     st.metric("📅 Eventi Totali", len(df))
@@ -93,18 +91,33 @@ if not df.empty:
 
   st.divider()
 
+  # Anteprimi dei prossimi 3 eventi in arrivo
+  st.subheader("⚡ I prossimi appuntamenti")
+  prossimi = eventi_futuri.head(3)
+
+  if not prossimi.empty:
+    cols_prev = st.columns(len(prossimi))
+    for idx, (_, row) in enumerate(prossimi.iterrows()):
+      with cols_prev[idx]:
+        luogo_txt = f"📍 {row['Luogo']}" if row["Luogo"] else "📍 Nessun luogo"
+        st.info(f"**{row['Titolo']}**\n\n🕒 {row['Inizio']}\n\n{luogo_txt}")
+  else:
+    st.write("Nessun evento futuro in programma.")
+
+  st.divider()
+
   # --- SEZIONE 2: FILTRI AVANZATI ---
-  st.subheader("🔍 Filtri e Ricerca")
+  st.subheader("🔍 Cerca e Filtra")
   c1, c2, c3 = st.columns(3)
 
   with c1:
     ricerca = st.text_input("Cerca parola chiave:")
   with c2:
+    # IMPOSTIAMO "Solo Futuri" COME PRIMA SCELTA DI DEFAULT
     periodo = st.selectbox(
-        "Filtra periodo:", ["Tutti", "Solo Futuri", "Solo Passati"]
+        "Filtra periodo:", ["Solo Futuri", "Tutti", "Solo Passati"]
     )
   with c3:
-    # Filtro per intervallo di date personalizzato
     min_date = df["DataInizio"].min()
     max_date = df["DataInizio"].max()
     if pd.isna(min_date):
@@ -131,7 +144,6 @@ if not df.empty:
   elif periodo == "Solo Passati":
     df_f = df_f[df_f["DataInizio"] < oggi]
 
-  # Filtro intervallo date se l'utente ha selezionato entrambe le date
   if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
     data_inizio_scelta, data_fine_scelta = intervallo_date
     df_f = df_f[
@@ -144,13 +156,11 @@ if not df.empty:
   # --- SEZIONE 3: TABELLA DATI E DOWNLOAD ---
   st.subheader(f"📋 Elenco Eventi ({len(df_f)} risultati)")
 
-  # Mostriamo la tabella con le nuove colonne (Titolo, Inizio, Luogo, Descrizione)
   st.dataframe(
       df_f[["Titolo", "Inizio", "Luogo", "Descrizione"]],
       use_container_width=True,
   )
 
-  # Pulsante per scaricare in CSV
   csv_data = df_f[
       ["Titolo", "Inizio", "Luogo", "Descrizione"]
   ].to_csv(index=False)
