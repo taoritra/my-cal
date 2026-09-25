@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS per forzare le 2 colonne affiancate e lo stile integrato delle card
+# Stile CSS per forzare la griglia a 2 colonne reali e lo stile integrato
 st.markdown(
     """
     <style>
@@ -20,12 +20,12 @@ st.markdown(
 
     .block-container {
         padding-top: 1.5rem !important;
-        padding-bottom: 1rem !important;
+        padding-bottom: 1.0rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
 
-    /* Titolo principale sempre visibile (senza icona) */
+    /* Titolo principale */
     h1.custom-title {
         color: #1b5e20 !important;
         font-size: 1.8rem !important;
@@ -35,29 +35,19 @@ st.markdown(
         letter-spacing: -0.5px;
     }
 
-    /* FORZA 2 COLONNE REALI AFFIANCATE */
+    /* FORZA 2 COLONNE AFFIANCATE IN STREAMLIT */
     [data-testid="column"] {
         width: 48% !important;
         flex: 1 1 48% !important;
         min-width: 250px !important;
+        float: left;
     }
 
-    /* Integrazione grafica della checkbox all'interno della card */
-    [data-testid="stCheckbox"] {
-        background-color: rgba(255, 255, 255, 0.6);
-        padding: 4px 10px;
-        border-radius: 0 0 10px 10px;
-        margin-top: -8px !important;
-        margin-bottom: 12px !important;
-        border-left: 1px solid rgba(0,0,0,0.08);
-        border-right: 1px solid rgba(0,0,0,0.08);
-        border-bottom: 1px solid rgba(0,0,0,0.08);
-    }
-    
-    [data-testid="stCheckbox"] label {
-        font-size: 0.8rem !important;
-        font-weight: 700 !important;
-        color: #2c3e50 !important;
+    /* Fix per evitare lo stacking verticale delle colonne nei container stretti */
+    [data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
     }
     </style>
 """,
@@ -158,7 +148,7 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- RENDERIZZAZIONE SINGOLA CARD COLORATA ---
+# --- RENDERIZZAZIONE SINGOLA CARD CON CHECKBOX INTERNA ---
 def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     uid = item["UID"]
     
@@ -168,22 +158,24 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     is_completato = uid in st.session_state.completati
     stile_opacita = "opacity: 0.4; text-decoration: line-through;" if is_completato else ""
 
-    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
-    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 700; margin-left: 5px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
+    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
+    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; margin-left: 5px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
     luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
 
-    # Corpo principale della card colorata
-    card_html = (
-        f'<div style="background-color: {colore_sfondo}; border-top-left-radius: 12px; border-top-right-radius: 12px; padding: 12px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); box-shadow: 0 3px 6px rgba(0,0,0,0.03); {stile_opacita}">'
-        f'<div style="font-size: 1.05rem; font-weight: 800; color: #2c3e50; line-height: 1.3; margin-bottom: 6px;">{item["Titolo"]}</div>'
-        f'<div style="font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 4px;">🕒 {item["Inizio"]}</div>'
-        f'<div style="font-size: 0.8rem; color: #666; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{luogo_str}</div>'
-        f'<div>{badge_cat} {badge_pri}</div>'
-        f'</div>'
+    # Contenitore unificato della card
+    st.markdown(
+        f"""
+        <div style="background-color: {colore_sfondo}; border-radius: 10px; padding: 12px; margin-bottom: 12px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 2px 4px rgba(0,0,0,0.02); {stile_opacita}">
+            <div style="font-size: 1rem; font-weight: 800; color: #2c3e50; line-height: 1.3; margin-bottom: 4px;">{item["Titolo"]}</div>
+            <div style="font-size: 0.8rem; font-weight: 600; color: #444; margin-bottom: 2px;">🕒 {item["Inizio"]}</div>
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{luogo_str}</div>
+            <div style="margin-bottom: 6px;">{badge_cat} {badge_pri}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
-    st.markdown(card_html, unsafe_allow_html=True)
     
-    # Checkbox agganciata visivamente sotto la card con lo stesso sfondo
+    # Checkbox posizionata subito sotto nel flusso visivo della stessa colonna
     nuovo_stato = st.checkbox("Completato", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{abs(hash(uid))}")
     if nuovo_stato and uid not in st.session_state.completati:
         st.session_state.completati.add(uid)
@@ -192,7 +184,7 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
         st.session_state.completati.remove(uid)
         st.rerun()
 
-# --- GRIGLIA A 2 COLONNE PERFETTA ---
+# --- GRIGLIA A 2 COLONNE REALI ---
 def renderizza_griglia_card(df_eventi, chiave_prefisso):
     colori_pastello = ["#fdf2e9", "#e8f8f5", "#ebf5fb", "#f4ecf7", "#fef9e7", "#f2f4f4"]
     lista_eventi = df_eventi.to_dict('records')
