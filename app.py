@@ -4,14 +4,18 @@ import pandas as pd
 import requests
 import streamlit as st
 
+# Configurazione della pagina
 st.set_page_config(
-    page_title="Il mio Calendario iCloud", page_icon="📅", layout="centered"
+    page_title="Dashboard Calendario iCloud", page_icon="📊", layout="wide"
 )
 
-st.title("📅 Il mio Calendario iCloud Personale")
-st.write("Gestisci, cerca e filtra tutti i tuoi eventi in tempo reale.")
+st.title("📊 Dashboard Calendario iCloud")
+st.write(
+    "Panoramica completa, statistiche in tempo reale e ricerca avanzata dei tuoi"
+    " eventi."
+)
 
-# Recuperiamo il link in modo sicuro dai Secrets di Streamlit
+# Recupero sicuro del link iCloud dai Secrets
 try:
   URL_CALENDARIO = st.secrets["URL_ICLOUD"]
 except Exception:
@@ -32,7 +36,9 @@ def carica_eventi(url):
     eventi = []
     for componente in cal.walk():
       if componente.name == "VEVENT":
-        titolo = str(componente.get("summary"))
+        titolo = str(componente.get("summary", "Senza titolo"))
+        luogo = str(componente.get("location", ""))
+        descrizione = str(componente.get("description", ""))
         inizio = componente.get("dtstart")
 
         if inizio:
@@ -47,9 +53,13 @@ def carica_eventi(url):
           data_obj = None
           data_str = "Non definita"
 
-        eventi.append(
-            {"Titolo": titolo, "DataInizio": data_obj, "Inizio": data_str}
-        )
+        eventi.append({
+            "Titolo": titolo,
+            "DataInizio": data_obj,
+            "Inizio": data_str,
+            "Luogo": luogo,
+            "Descrizione": descrizione,
+        })
 
     df = pd.DataFrame(eventi)
     if not df.empty:
@@ -62,29 +72,52 @@ def carica_eventi(url):
     return pd.DataFrame()
 
 
-# Caricamento dati
-with st.spinner("Sincronizzazione con iCloud in corso..."):
+# Caricamento dati con spinner
+with st.spinner("Sincronizzazione della dashboard in corso..."):
   df = carica_eventi(URL_CALENDARIO)
 
 if not df.empty:
-  # Sezione Notifiche per Oggi
   oggi = date.today()
-  eventi_oggi = df[df["DataInizio"] == oggi]
 
-  if not eventi_oggi.empty:
-    st.success(f"🔔 **ATTENZIONE: Hai {len(eventi_oggi)} eventi oggi!**")
-    for _, row in eventi_oggi.iterrows():
-      st.markdown(f"- **{row['Titolo']}** ({row['Inizio']})")
+  # --- SEZIONE 1: STATISTICHE / KPI DASHBOARD ---
+  eventi_oggi = df[df["DataInizio"] == oggi]
+  eventi_futuri = df[df["DataInizio"] >= oggi]
+
+  col_m1, col_m2, col_m3 = st.columns(3)
+  with col_m1:
+    st.metric("📅 Eventi Totali", len(df))
+  with col_m2:
+    st.metric("🔔 Eventi di Oggi", len(eventi_oggi))
+  with col_m3:
+    st.metric("🚀 Eventi Futuri", len(eventi_futuri))
 
   st.divider()
 
-  # Filtri interattivi
-  col1, col2 = st.columns(2)
-  with col1:
-    ricerca = st.text_input("🔍 Cerca parola chiave:")
-  with col2:
+  # --- SEZIONE 2: FILTRI AVANZATI ---
+  st.subheader("🔍 Filtri e Ricerca")
+  c1, c2, c3 = st.columns(3)
+
+  with c1:
+    ricerca = st.text_input("Cerca parola chiave:")
+  with c2:
     periodo = st.selectbox(
-        "📅 Filtra periodo:", ["Tutti", "Solo Futuri", "Solo Passati"]
+        "Filtra periodo:", ["Tutti", "Solo Futuri", "Solo Passati"]
+    )
+  with c3:
+    # Filtro per intervallo di date personalizzato
+    min_date = df["DataInizio"].min()
+    max_date = df["DataInizio"].max()
+    if pd.isna(min_date):
+      min_date = oggi
+    if pd.isna(max_date):
+      max_date = oggi
+
+    intervallo_date = st.date_input(
+        "Intervallo date:",
+        value=(
+            min_date if isinstance(min_date, date) else oggi,
+            max_date if isinstance(max_date, date) else oggi,
+        ),
     )
 
   df_f = df.copy()
@@ -98,8 +131,35 @@ if not df.empty:
   elif periodo == "Solo Passati":
     df_f = df_f[df_f["DataInizio"] < oggi]
 
-  st.write(f"Trovati **{len(df_f)}** eventi in base ai filtri:")
-  st.dataframe(df_f[["Titolo", "Inizio"]], use_container_width=True)
+  # Filtro intervallo date se l'utente ha selezionato entrambe le date
+  if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
+    data_inizio_scelta, data_fine_scelta = intervallo_date
+    df_f = df_f[
+        (df_f["DataInizio"] >= data_inizio_scelta)
+        & (df_f["DataInizio"] <= data_fine_scelta)
+    ]
+
+  st.divider()
+
+  # --- SEZIONE 3: TABELLA DATI E DOWNLOAD ---
+  st.subheader(f"📋 Elenco Eventi ({len(df_f)} risultati)")
+
+  # Mostriamo la tabella con le nuove colonne (Titolo, Inizio, Luogo, Descrizione)
+  st.dataframe(
+      df_f[["Titolo", "Inizio", "Luogo", "Descrizione"]],
+      use_container_width=True,
+  )
+
+  # Pulsante per scaricare in CSV
+  csv_data = df_f[
+      ["Titolo", "Inizio", "Luogo", "Descrizione"]
+  ].to_csv(index=False)
+  st.download_button(
+      label="📥 Scarica eventi filtrati (CSV)",
+      data=csv_data,
+      file_name="miei_eventi_calendario.csv",
+      mime="text/csv",
+  )
 
 else:
-  st.warning("Nessun evento trovato. Controlla la connessione al calendario.")
+  st.warning("Nessun evento trovato o errore di connessione al calendario.")
