@@ -8,7 +8,7 @@ import zoneinfo
 # Configurazione della pagina
 st.set_page_config(page_title="La mia agenda", page_icon="📅", layout="wide")
 
-# Stile CSS: Forza 2 colonne anche su mobile e ottimizza i testi
+# Stile CSS: Layout a 2 colonne e grafica card
 st.markdown(
     """
     <style>
@@ -21,8 +21,8 @@ st.markdown(
     .block-container {
         padding-top: 2rem !important;
         padding-bottom: 1rem !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
     }
 
     /* Titolo principale */
@@ -31,28 +31,21 @@ st.markdown(
         font-size: 1.8rem !important;
         font-weight: 900 !important;
         margin-top: 0px !important;
-        padding-top: 0px !important;
         margin-bottom: 0px !important;
         letter-spacing: -0.5px;
     }
 
-    @media (max-width: 640px) {
-        h1.custom-title {
-            font-size: 1.4rem !important;
-        }
-    }
-
-    /* FORZA 2 COLONNE REALI ANCHE SU MOBILE */
+    /* Forza 2 colonne reali */
     [data-testid="column"] {
         width: 50% !important;
         flex: 1 1 50% !important;
         min-width: 50% !important;
     }
 
-    /* Adattamento checkbox */
+    /* Stile checkbox */
     [data-testid="stCheckbox"] {
-        margin-top: -2px !important;
-        margin-bottom: 10px !important;
+        margin-top: -5px !important;
+        margin-bottom: 5px !important;
     }
     [data-testid="stCheckbox"] label {
         font-size: 0.85rem !important;
@@ -69,7 +62,7 @@ st.markdown(
 )
 
 # Intestazione visibile
-st.markdown('<h1 class="custom-title">La mia agenda</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="custom-title">📅 La mia agenda</h1>', unsafe_allow_html=True)
 st.caption("Sincronizzato in tempo reale (Fuso orario: Roma)")
 
 # Recupero link iCloud sicuro
@@ -145,7 +138,10 @@ def carica_eventi(url):
                     data_str_ita = "Data non definita"
 
                 categoria, priorita = analizza_dettagli_evento(titolo, descrizione, cat_str)
-                uid = f"{titolo}_{str(data_obj)}"
+                
+                # UID robusto basato su ID nativo del calendario (se presente) o combinazione sicura
+                native_uid = str(componente.get("uid", ""))
+                uid = native_uid if native_uid else f"{titolo}_{str(data_obj)}_{str(inizio)}"
 
                 eventi.append({
                     "UID": uid, "Titolo": titolo, "DataInizio": data_obj,
@@ -161,18 +157,22 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- FUNZIONE PER RENDERIZZARE LA SINGOLA CARD COLORATA ---
+# --- RENDERIZZAZIONE SINGOLA CARD COLORATA ---
 def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     uid = item["UID"]
+    
+    if "completati" not in st.session_state:
+        st.session_state.completati = set()
+        
     is_completato = uid in st.session_state.completati
-    stile_opacita = "opacity: 0.5; text-decoration: line-through;" if is_completato else ""
+    stile_opacita = "opacity: 0.4; text-decoration: line-through;" if is_completato else ""
 
     badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
     badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 700; margin-left: 5px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
     luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
 
     card_html = (
-        f'<div style="background-color: {colore_sfondo}; border-radius: 12px; padding: 12px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 3px 6px rgba(0,0,0,0.03); margin-bottom: 6px; {stile_opacita}">'
+        f'<div style="background-color: {colore_sfondo}; border-radius: 12px; padding: 12px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 3px 6px rgba(0,0,0,0.03); margin-bottom: 4px; {stile_opacita}">'
         f'<div style="font-size: 1.05rem; font-weight: 800; color: #2c3e50; line-height: 1.3; margin-bottom: 6px;">{item["Titolo"]}</div>'
         f'<div style="font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 4px;">🕒 {item["Inizio"]}</div>'
         f'<div style="font-size: 0.8rem; color: #666; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{luogo_str}</div>'
@@ -181,7 +181,8 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     )
     st.markdown(card_html, unsafe_allow_html=True)
     
-    nuovo_stato = st.checkbox("Fatto", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{uid}")
+    # Checkbox gestita con stato persistente pulito
+    nuovo_stato = st.checkbox("Completato", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{abs(hash(uid))}")
     if nuovo_stato and uid not in st.session_state.completati:
         st.session_state.completati.add(uid)
         st.rerun()
@@ -189,11 +190,9 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
         st.session_state.completati.remove(uid)
         st.rerun()
 
-# --- FUNZIONE PER LA GRIGLIA A 2 COLONNE ---
+# --- GRIGLIA A 2 COLONNE ---
 def renderizza_griglia_card(df_eventi, chiave_prefisso):
-    colori_pastello = [
-        "#fdf2e9", "#e8f8f5", "#ebf5fb", "#f4ecf7", "#fef9e7", "#f2f4f4"
-    ]
+    colori_pastello = ["#fdf2e9", "#e8f8f5", "#ebf5fb", "#f4ecf7", "#fef9e7", "#f2f4f4"]
     lista_eventi = df_eventi.to_dict('records')
 
     for i in range(0, len(lista_eventi), 2):
@@ -201,13 +200,11 @@ def renderizza_griglia_card(df_eventi, chiave_prefisso):
         
         with col1:
             if i < len(lista_eventi):
-                item = lista_eventi[i]
-                renderizza_singola_card(item, i, chiave_prefisso, colori_pastello[i % len(colori_pastello)])
+                renderizza_singola_card(lista_eventi[i], i, chiave_prefisso, colori_pastello[i % len(colori_pastello)])
             
         with col2:
             if i + 1 < len(lista_eventi):
-                item = lista_eventi[i+1]
-                renderizza_singola_card(item, i+1, chiave_prefisso, colori_pastello[(i+1) % len(colori_pastello)])
+                renderizza_singola_card(lista_eventi[i+1], i+1, chiave_prefisso, colori_pastello[(i+1) % len(colori_pastello)])
 
 # --- CARICAMENTO DATI ---
 with st.spinner("Sincronizzazione in corso..."):
