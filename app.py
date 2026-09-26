@@ -48,7 +48,7 @@ st.markdown(
     }
     
     [data-testid="stCheckbox"] label {
-        font-size: 0.7rem !important;
+        font-size: 0.75rem !important;
         font-weight: 700 !important;
         color: #2c3e50 !important;
     }
@@ -151,7 +151,7 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- RENDERIZZAZIONE SINGOLA CARD CON DETTAGLI E PERSISTENZA ---
+# --- RENDERIZZAZIONE SINGOLA CARD CON FONT MAGGIORATO E BADGE PULITI ---
 def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     uid = item["UID"]
     
@@ -166,27 +166,34 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     is_completato = uid in st.session_state.completati
     stile_opacita = "opacity: 0.4; text-decoration: line-through;" if is_completato else ""
 
-    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else '<span style="background-color: #e2e3e5; color: #383d41; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Generale</span>')
-    
+    # Badge puliti: appaiono solo se Lavoro/Casa o Alta priorità
+    badge_cat = ""
+    if item["Categoria"] == "Lavoro":
+        badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Lavoro</span>'
+    elif item["Categoria"] == "Casa":
+        badge_cat = '<span style="background-color: #d1e7dd; color: #0f5132; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Casa</span>'
+
+    badge_pri = ""
     if item["Priorità"] == "Alta":
-        badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; margin-left: 4px;">⚠️ Alta</span>'
-    else:
-        badge_pri = '<span style="background-color: #e2e3e5; color: #383d41; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; margin-left: 4px;">📌 Normale</span>'
+        badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; margin-left: 4px;">⚠️ Alta</span>'
 
     luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
     desc_str = item["Descrizione"].strip()
 
-    # Blocco descrizione condizionale
-    html_desc = f'<div style="font-size: 0.7rem; color: #333; background: rgba(255,255,255,0.6); padding: 4px 6px; border-radius: 4px; margin-bottom: 6px; border-left: 2px solid #1b5e20; white-space: pre-wrap;">📝 {desc_str}</div>' if desc_str else ''
+    # Blocco descrizione con font leggermente più ampio
+    html_desc = f'<div style="font-size: 0.8rem; color: #333; background: rgba(255,255,255,0.7); padding: 6px 8px; border-radius: 4px; margin-bottom: 6px; border-left: 3px solid #1b5e20; white-space: pre-wrap;">📝 {desc_str}</div>' if desc_str else ''
 
-    # Blocco HTML unico per evitare errori di rendering dei tag
+    # Mostriamo la riga dei badge solo se ce n'è almeno uno attivo
+    html_badge_container = f'<div style="margin-top: 4px;">{badge_cat} {badge_pri}</div>' if (badge_cat or badge_pri) else ''
+
+    # Blocco HTML unico con font ingranditi
     card_html = f"""
-    <div style="background-color: {colore_sfondo}; border-top-left-radius: 8px; border-top-right-radius: 8px; padding: 8px 10px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); {stile_opacita}">
-        <div style="font-size: 0.9rem; font-weight: 800; color: #2c3e50; line-height: 1.2; margin-bottom: 2px;">{item["Titolo"]}</div>
-        <div style="font-size: 0.7rem; font-weight: 600; color: #444; margin-bottom: 2px;">🕒 {item["Inizio"]}</div>
-        <div style="font-size: 0.65rem; color: #666; margin-bottom: 4px;">{luogo_str}</div>
+    <div style="background-color: {colore_sfondo}; border-top-left-radius: 8px; border-top-right-radius: 8px; padding: 10px 12px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); {stile_opacita}">
+        <div style="font-size: 1.05rem; font-weight: 800; color: #2c3e50; line-height: 1.3; margin-bottom: 3px;">{item["Titolo"]}</div>
+        <div style="font-size: 0.8rem; font-weight: 600; color: #444; margin-bottom: 3px;">🕒 {item["Inizio"]}</div>
+        <div style="font-size: 0.75rem; color: #666; margin-bottom: 6px;">{luogo_str}</div>
         {html_desc}
-        <div style="margin-top: 2px;">{badge_cat} {badge_pri}</div>
+        {html_badge_container}
     </div>
     """
     st.markdown(card_html, unsafe_allow_html=True)
