@@ -1,7 +1,7 @@
 from datetime import date, datetime
-import html
 from icalendar import Calendar
 import pandas as pd
+import re
 import requests
 import streamlit as st
 import zoneinfo
@@ -93,6 +93,13 @@ def formatta_data_italiano(dt_val):
         return f"{nome_giorno} {d.day} {nome_mese} {d.year} {ora_str}".strip()
     return "Non definita"
 
+def pulisci_testo_html(testo):
+    if not testo:
+        return ""
+    # Rimuove completamente qualsiasi tag HTML indesiderato (es. <div>, </div>, <br>, ecc.)
+    clean = re.compile("<.*?>")
+    return re.sub(clean, "", testo).strip()
+
 def analizza_dettagli_evento(titolo, descrizione, categoria_ical):
     testo_globale = f"{titolo} {descrizione} {categoria_ical}".lower()
     if any(k in testo_globale for k in ["lavoro", "ufficio", "meeting", "call", "client", "riunione", "lavorare"]):
@@ -120,7 +127,10 @@ def carica_eventi(url):
             if componente.name == "VEVENT":
                 titolo = str(componente.get("summary", "Senza titolo"))
                 luogo = str(componente.get("location", ""))
-                descrizione = str(componente.get("description", ""))
+                
+                # Pulizia immediata della descrizione da eventuali tag HTML sporchi
+                descrizione_raw = str(componente.get("description", ""))
+                descrizione = pulisci_testo_html(descrizione_raw)
                 
                 cat_raw = componente.get("categories", "")
                 cat_str = cat_raw.to_ical().decode("utf-8") if hasattr(cat_raw, "to_ical") else str(cat_raw)
@@ -177,9 +187,7 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
         badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; margin-left: 4px;">⚠️ Alta</span>'
 
     luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
-    
-    # Proteggiamo la descrizione facendo l'escape dei caratteri HTML speciali
-    desc_str = html.escape(item["Descrizione"].strip())
+    desc_str = item["Descrizione"].strip()
 
     html_desc = f'<div style="font-size: 0.8rem; color: #333; background: rgba(255,255,255,0.7); padding: 6px 8px; border-radius: 4px; margin-bottom: 6px; border-left: 3px solid #1b5e20; white-space: pre-wrap;">📝 {desc_str}</div>' if desc_str else ''
     html_badge_container = f'<div style="margin-top: 4px;">{badge_cat} {badge_pri}</div>' if (badge_cat or badge_pri) else ''
