@@ -151,48 +151,45 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- RENDERIZZAZIONE SINGOLA CARD CON DETTAGLI ---
+# --- RENDERIZZAZIONE SINGOLA CARD CON DETTAGLI E PERSISTENZA ---
 def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     uid = item["UID"]
     
+    # Gestione stato e persistenza tramite URL (sopravvive al refresh F5)
     if "completati" not in st.session_state:
-        st.session_state.completati = set()
+        qp_completati = st.query_params.get("completati", "")
+        if qp_completati:
+            st.session_state.completati = set(qp_completati.split(","))
+        else:
+            st.session_state.completati = set()
         
     is_completato = uid in st.session_state.completati
     stile_opacita = "opacity: 0.4; text-decoration: line-through;" if is_completato else ""
 
-    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else "")
-    badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; margin-left: 4px;">⚠️ Alta</span>' if item["Priorità"] == "Alta" else ""
+    badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Lavoro</span>' if item["Categoria"] == "Lavoro" else ('<span style="background-color: #d1e7dd; color: #0f5132; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Casa</span>' if item["Categoria"] == "Casa" else '<span style="background-color: #e2e3e5; color: #383d41; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">Generale</span>')
+    
+    if item["Priorità"] == "Alta":
+        badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; margin-left: 4px;">⚠️ Alta</span>'
+    else:
+        badge_pri = '<span style="background-color: #e2e3e5; color: #383d41; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; margin-left: 4px;">📌 Normale</span>'
+
     luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
     desc_str = item["Descrizione"].strip()
 
-    # Parte superiore della card
-    st.markdown(
-        f"""
-        <div style="background-color: {colore_sfondo}; border-top-left-radius: 8px; border-top-right-radius: 8px; padding: 8px 10px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); {stile_opacita}">
-            <div style="font-size: 0.9rem; font-weight: 800; color: #2c3e50; line-height: 1.2; margin-bottom: 2px;">{item["Titolo"]}</div>
-            <div style="font-size: 0.7rem; font-weight: 600; color: #444; margin-bottom: 2px;">🕒 {item["Inizio"]}</div>
-            <div style="font-size: 0.65rem; color: #666; margin-bottom: 4px;">{luogo_str}</div>
-        """,
-        unsafe_allow_html=True
-    )
+    # Blocco descrizione condizionale
+    html_desc = f'<div style="font-size: 0.7rem; color: #333; background: rgba(255,255,255,0.6); padding: 4px 6px; border-radius: 4px; margin-bottom: 6px; border-left: 2px solid #1b5e20; white-space: pre-wrap;">📝 {desc_str}</div>' if desc_str else ''
 
-    # Se l'evento ha una descrizione/dettagli su iCloud, li mostriamo in modo pulito
-    if desc_str:
-        st.markdown(
-            f"""
-            <div style="font-size: 0.7rem; color: #333; background: rgba(255,255,255,0.6); padding: 4px 6px; border-radius: 4px; margin-bottom: 6px; border-left: 2px solid #1b5e20; white-space: pre-wrap;">📝 {desc_str}</div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    st.markdown(
-        f"""
-            <div style="margin-top: 2px;">{badge_cat} {badge_pri}</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    # Blocco HTML unico per evitare errori di rendering dei tag
+    card_html = f"""
+    <div style="background-color: {colore_sfondo}; border-top-left-radius: 8px; border-top-right-radius: 8px; padding: 8px 10px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); {stile_opacita}">
+        <div style="font-size: 0.9rem; font-weight: 800; color: #2c3e50; line-height: 1.2; margin-bottom: 2px;">{item["Titolo"]}</div>
+        <div style="font-size: 0.7rem; font-weight: 600; color: #444; margin-bottom: 2px;">🕒 {item["Inizio"]}</div>
+        <div style="font-size: 0.65rem; color: #666; margin-bottom: 4px;">{luogo_str}</div>
+        {html_desc}
+        <div style="margin-top: 2px;">{badge_cat} {badge_pri}</div>
+    </div>
+    """
+    st.markdown(card_html, unsafe_allow_html=True)
     
     # Checkbox agganciata con lo stesso sfondo
     st.markdown(f'<div style="background-color: {colore_sfondo};">', unsafe_allow_html=True)
@@ -201,9 +198,14 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
 
     if nuovo_stato and uid not in st.session_state.completati:
         st.session_state.completati.add(uid)
+        st.query_params["completati"] = ",".join(st.session_state.completati)
         st.rerun()
     elif not nuovo_stato and uid in st.session_state.completati:
         st.session_state.completati.remove(uid)
+        if st.session_state.completati:
+            st.query_params["completati"] = ",".join(st.session_state.completati)
+        else:
+            st.query_params.pop("completati", None)
         st.rerun()
 
 def renderizza_lista_card(df_eventi, chiave_prefisso):
@@ -220,7 +222,11 @@ with st.spinner("Sincronizzazione in corso..."):
 if not df.empty:
     oggi = get_oggi_italia()
     if "completati" not in st.session_state:
-        st.session_state.completati = set()
+        qp_completati = st.query_params.get("completati", "")
+        if qp_completati:
+            st.session_state.completati = set(qp_completati.split(","))
+        else:
+            st.session_state.completati = set()
 
     eventi_oggi = df[df["DataInizio"].apply(lambda x: x == oggi if pd.notna(x) else False)]
     eventi_futuri = df[df["DataInizio"].apply(lambda x: x >= oggi if pd.notna(x) else False)]
