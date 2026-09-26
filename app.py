@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from icalendar import Calendar
+import html
 import pandas as pd
 import re
 import requests
@@ -96,8 +97,9 @@ def formatta_data_italiano(dt_val):
 def pulisci_testo_html(testo):
     if not testo:
         return ""
-    # Rimuove qualsiasi tag HTML anche su più righe e pulisce residui ostinati
-    testo = re.sub(r'<[^>]*>', '', testo, flags=re.DOTALL)
+    # Decodifica entità e rimuove qualsiasi tag HTML ovunque si trovi
+    testo = html.unescape(testo)
+    testo = re.sub(r'<[^>]*>', '', testo, flags=re.DOTALL | re.IGNORECASE)
     testo = testo.replace("</div>", "").replace("<div>", "").replace("<br>", "").replace("<br/>", "")
     return testo.strip()
 
@@ -127,9 +129,11 @@ def carica_eventi(url):
         for componente in cal.walk():
             if componente.name == "VEVENT":
                 titolo = str(componente.get("summary", "Senza titolo"))
-                luogo = str(componente.get("location", ""))
                 
-                # Pulizia avanzata della descrizione
+                # Pulizia avanzata sia del luogo che della descrizione
+                luogo_raw = str(componente.get("location", ""))
+                luogo = pulisci_testo_html(luogo_raw)
+                
                 descrizione_raw = str(componente.get("description", ""))
                 descrizione = pulisci_testo_html(descrizione_raw)
                 
