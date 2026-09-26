@@ -1,4 +1,5 @@
 from datetime import date, datetime
+import html
 from icalendar import Calendar
 import pandas as pd
 import requests
@@ -151,11 +152,10 @@ def carica_eventi(url):
         st.error(f"❌ Errore durante il caricamento: {e}")
         return pd.DataFrame()
 
-# --- RENDERIZZAZIONE SINGOLA CARD CON FONT MAGGIORATO E BADGE PULITI ---
+# --- RENDERIZZAZIONE SINGOLA CARD ---
 def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     uid = item["UID"]
     
-    # Gestione stato e persistenza tramite URL (sopravvive al refresh F5)
     if "completati" not in st.session_state:
         qp_completati = st.query_params.get("completati", "")
         if qp_completati:
@@ -166,7 +166,6 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     is_completato = uid in st.session_state.completati
     stile_opacita = "opacity: 0.4; text-decoration: line-through;" if is_completato else ""
 
-    # Badge puliti: appaiono solo se Lavoro/Casa o Alta priorità
     badge_cat = ""
     if item["Categoria"] == "Lavoro":
         badge_cat = '<span style="background-color: #cfe2ff; color: #084298; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Lavoro</span>'
@@ -178,15 +177,13 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
         badge_pri = '<span style="background-color: #f8d7da; color: #842029; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; margin-left: 4px;">⚠️ Alta</span>'
 
     luogo_str = f"📍 {item['Luogo']}" if item["Luogo"] else ""
-    desc_str = item["Descrizione"].strip()
+    
+    # Proteggiamo la descrizione facendo l'escape dei caratteri HTML speciali
+    desc_str = html.escape(item["Descrizione"].strip())
 
-    # Blocco descrizione con font leggermente più ampio
     html_desc = f'<div style="font-size: 0.8rem; color: #333; background: rgba(255,255,255,0.7); padding: 6px 8px; border-radius: 4px; margin-bottom: 6px; border-left: 3px solid #1b5e20; white-space: pre-wrap;">📝 {desc_str}</div>' if desc_str else ''
-
-    # Mostriamo la riga dei badge solo se ce n'è almeno uno attivo
     html_badge_container = f'<div style="margin-top: 4px;">{badge_cat} {badge_pri}</div>' if (badge_cat or badge_pri) else ''
 
-    # Blocco HTML unico con font ingranditi
     card_html = f"""
     <div style="background-color: {colore_sfondo}; border-top-left-radius: 8px; border-top-right-radius: 8px; padding: 10px 12px; border-left: 1px solid rgba(0,0,0,0.08); border-right: 1px solid rgba(0,0,0,0.08); border-top: 1px solid rgba(0,0,0,0.08); {stile_opacita}">
         <div style="font-size: 1.05rem; font-weight: 800; color: #2c3e50; line-height: 1.3; margin-bottom: 3px;">{item["Titolo"]}</div>
@@ -198,7 +195,6 @@ def renderizza_singola_card(item, idx, chiave_prefisso, colore_sfondo):
     """
     st.markdown(card_html, unsafe_allow_html=True)
     
-    # Checkbox agganciata con lo stesso sfondo
     st.markdown(f'<div style="background-color: {colore_sfondo};">', unsafe_allow_html=True)
     nuovo_stato = st.checkbox("Completato", value=is_completato, key=f"chk_{chiave_prefisso}_{idx}_{abs(hash(uid))}")
     st.markdown('</div>', unsafe_allow_html=True)
