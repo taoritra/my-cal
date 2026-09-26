@@ -96,9 +96,10 @@ def formatta_data_italiano(dt_val):
 def pulisci_testo_html(testo):
     if not testo:
         return ""
-    # Rimuove completamente qualsiasi tag HTML indesiderato (es. <div>, </div>, <br>, ecc.)
-    clean = re.compile("<.*?>")
-    return re.sub(clean, "", testo).strip()
+    # Rimuove qualsiasi tag HTML anche su più righe e pulisce residui ostinati
+    testo = re.sub(r'<[^>]*>', '', testo, flags=re.DOTALL)
+    testo = testo.replace("</div>", "").replace("<div>", "").replace("<br>", "").replace("<br/>", "")
+    return testo.strip()
 
 def analizza_dettagli_evento(titolo, descrizione, categoria_ical):
     testo_globale = f"{titolo} {descrizione} {categoria_ical}".lower()
@@ -128,7 +129,7 @@ def carica_eventi(url):
                 titolo = str(componente.get("summary", "Senza titolo"))
                 luogo = str(componente.get("location", ""))
                 
-                # Pulizia immediata della descrizione da eventuali tag HTML sporchi
+                # Pulizia avanzata della descrizione
                 descrizione_raw = str(componente.get("description", ""))
                 descrizione = pulisci_testo_html(descrizione_raw)
                 
